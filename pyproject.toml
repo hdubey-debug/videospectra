@@ -87,6 +87,11 @@ ignore = [
     "PLR2004",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Pydantic resolves annotation strings at runtime; PEP 604 (X | Y) fails
+# under Python 3.9, so events.py uses typing.Optional/Union deliberately.
+"vnvideo/events.py" = ["UP007", "UP045"]
+
 [tool.mypy]
 python_version = "3.9"
 warn_unused_configs = true
