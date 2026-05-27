@@ -91,6 +91,13 @@ ignore = [
 # Pydantic resolves annotation strings at runtime; PEP 604 (X | Y) fails
 # under Python 3.9, so events.py uses typing.Optional/Union deliberately.
 "vnvideo/events.py" = ["UP007", "UP045"]
+# Verbatim port of compute_entropy from von-neumann-dashboard/server.py
+# (kept byte-identical for parity testing). Do not refactor.
+"vnvideo/analytics/spectral.py" = ["PLR0912", "PLR0915"]
+# Legacy code copied verbatim for parity testing — do not modify.
+"tests/fixtures/legacy_compute_entropy.py" = [
+    "UP006", "UP007", "UP035", "UP045", "PLR0912", "PLR0915",
+]
 
 [tool.mypy]
 python_version = "3.9"
