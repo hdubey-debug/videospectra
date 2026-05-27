@@ -101,6 +101,9 @@ ignore = [
 # the flat if/elif is clearer than a dispatch dict given the asymmetric
 # logic in each branch.
 "vnvideo/server/sinks.py" = ["PLR0911", "PLR0912"]
+# Lazy imports inside cli.py functions are intentional — keeps
+# `vnvideo --version` from pulling in fastapi/uvicorn/torch transitively.
+"vnvideo/cli.py" = ["PLC0415"]
 # Legacy code copied verbatim for parity testing — do not modify.
 "tests/fixtures/legacy_compute_entropy.py" = [
     "UP006", "UP007", "UP035", "UP045", "PLR0912", "PLR0915",
