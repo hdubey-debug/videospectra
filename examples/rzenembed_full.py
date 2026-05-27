@@ -63,13 +63,19 @@ def _get_model():
     if _MODEL is not None:
         return _MODEL
 
-    rzen_src = Path(__file__).resolve().parent.parent / "RzenEmbed"
-    if not rzen_src.exists():
-        rzen_src = _RZEN_SRC_DEFAULT
-    if not rzen_src.exists():
+    # Layout: rzenembed/vnvideo/examples/this_file.py  -> grandparent = rzenembed/
+    # RzenEmbed is a sibling of vnvideo/ under rzenembed/, so grandparent/RzenEmbed.
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "RzenEmbed",  # standard layout
+        _RZEN_SRC_DEFAULT,  # absolute fallback for the original development tree
+    ]
+    rzen_src = next((c for c in candidates if c.exists()), None)
+    if rzen_src is None:
         raise RuntimeError(
-            f"RzenEmbed source not found at {rzen_src}. "
-            "Check the path or install RzenEmbed beside this package."
+            "RzenEmbed source not found in any candidate path: "
+            f"{[str(c) for c in candidates]}. "
+            "Clone https://github.com/Qihoo360/RzenEmbed beside vnvideo/ or "
+            "set the path explicitly in this file."
         )
     sys.path.insert(0, str(rzen_src))
 

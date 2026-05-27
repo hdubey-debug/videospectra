@@ -1,6 +1,8 @@
 """Tests for vnvideo.analytics.spectral — parity, property, performance."""
 from __future__ import annotations
 
+import pathlib
+import re
 import time
 from collections import deque
 
@@ -326,3 +328,58 @@ class TestVerbatimPort:
         assert set(new[0].keys()) == set(legacy[0].keys())
         for key in ("entropy_norm", "motion_score", "anomaly_score", "effective_rank"):
             assert new[0][key] == pytest.approx(legacy[0][key], abs=1e-12)
+
+
+class TestLegacyFixtureFreshness:
+    """The fixture at tests/fixtures/legacy_compute_entropy.py is a manual
+    copy of compute_entropy from von-neumann-dashboard/server.py:177-306.
+
+    This test extracts the function body from the live source and
+    compares it to the fixture. If the upstream file drifts, this
+    fails with a clear instruction to regenerate the fixture — which
+    is the only way the parity gate stays meaningful.
+    """
+
+    LIVE_SOURCE = (
+        "/mmfs1/scratch/jacks.local/hdubey/02-video-embeddings/"
+        "rzenembed/von-neumann-dashboard/server.py"
+    )
+
+    def test_fixture_matches_live_compute_entropy(self) -> None:
+        live_path = pathlib.Path(self.LIVE_SOURCE)
+        if not live_path.exists():
+            pytest.skip(f"live source not present at {self.LIVE_SOURCE}")
+
+        live_text = live_path.read_text()
+        # Extract just the compute_entropy function body. We use a
+        # naive marker pair that we control: the function begins at
+        # 'def compute_entropy' and ends at the next top-level def or
+        # '# ── '-style section divider.
+        m = re.search(
+            r"^def compute_entropy\b.*?(?=^\S|^# ?─)",
+            live_text,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        assert m, "could not locate compute_entropy in live source"
+        live_body = m.group(0).strip()
+
+        fixture_path = pathlib.Path(__file__).parent / "fixtures" / "legacy_compute_entropy.py"
+        fixture_text = fixture_path.read_text()
+        m2 = re.search(
+            r"^def compute_entropy\b.*?(?=^\S|^# ?─|\Z)",
+            fixture_text,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        assert m2, "could not locate compute_entropy in fixture"
+        fixture_body = m2.group(0).strip()
+
+        # Normalize trailing whitespace
+        live_body_norm = "\n".join(line.rstrip() for line in live_body.splitlines())
+        fixture_body_norm = "\n".join(line.rstrip() for line in fixture_body.splitlines())
+
+        assert live_body_norm == fixture_body_norm, (
+            "tests/fixtures/legacy_compute_entropy.py has DRIFTED from the live "
+            f"source at {self.LIVE_SOURCE}. Regenerate the fixture by copying "
+            "the compute_entropy function verbatim. The parity gate is only "
+            "meaningful when the fixture matches the source of truth."
+        )

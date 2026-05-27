@@ -165,7 +165,7 @@ async def _dispatch_command(session: Session, cmd: dict, ws: WebSocket) -> None:
 
 async def _safe_emit_status(session: Session, message: str, *, level: str) -> None:
     try:
-        await session._emit(  # type: ignore[attr-defined]
+        await session._emit(
             Status(
                 session_id=session.session_id,
                 source_id=None,

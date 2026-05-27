@@ -53,7 +53,7 @@ def _now_utc() -> datetime:
 
 
 class BaseEvent(_StrictModel):
-    schema_version: Literal["0.1"] = SCHEMA_VERSION
+    schema_version: Literal["0.1"] = "0.1"
     payload_version: str = PAYLOAD_VERSION
     type: str
     session_id: str

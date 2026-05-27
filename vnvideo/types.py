@@ -81,10 +81,9 @@ class Frame:
     @classmethod
     def from_jpeg(cls, data: bytes, *, source_id: str, frame_id: int) -> Frame:
         """Decode a JPEG byte string into a Frame, stamping current timestamps."""
-        image = Image.open(io.BytesIO(data))
-        image.load()
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        opened = Image.open(io.BytesIO(data))
+        opened.load()
+        image: PILImage = opened if opened.mode == "RGB" else opened.convert("RGB")
         return cls(
             image=image,
             frame_id=frame_id,

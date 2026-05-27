@@ -149,6 +149,19 @@ Built-in sinks:
 | `MemorySink` | `asyncio.Queue`-backed; iterable; the canonical SDK consumption pattern |
 | `WebSocketSink(ws)` | Lives in `server/`; serializes via `model_dump(mode='json')` |
 
+## Per-frame emission ordering
+
+For each frame, the Session emits events in this order:
+
+1. `ShotBoundary` — if the rising-edge anomaly detector fired
+2. `AnomalyAlert` — if a sustained run crossed the threshold this frame
+3. `Recurrence` — if a matching subspace was found in history
+4. `FrameMetrics` — always last per frame
+
+`FrameMetrics` is the per-frame "flush" signal that aggregators (e.g., the bundled legacy dashboard sink) rely on to render one combined UI update. The conditional events (`ShotBoundary`, `AnomalyAlert`, `Recurrence`) belong to the same frame's processing and arrive *before* the `FrameMetrics` for that frame_id.
+
+`ClipScores` is asynchronous — it fires when a clip-level embedder finishes a clip (every ~8 frames at 2 FPS, in a fire-and-forget task). It carries the `frame_id` of the last frame in the clip but is not bound to that frame's per-frame ordering.
+
 ## Event envelope
 
 Every event is a Pydantic model that serializes as:

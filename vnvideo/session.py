@@ -609,7 +609,7 @@ class Session:
         *,
         role: Literal["frame", "clip", "text"],
     ) -> np.ndarray:
-        fn: Callable = embedder.embed_fn  # type: ignore[assignment]
+        fn: Callable = embedder.embed_fn
         async with self._embed_sem:
             if inspect.iscoroutinefunction(fn):
                 result: Any = await fn(inputs)

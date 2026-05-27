@@ -157,7 +157,7 @@ def _spectral_step(
         motion_score = 0.0
 
     # Subspace-fit anomaly: how well does the new frame fit the PREVIOUS eigenbasis?
-    if prev_full_eigvecs is not None and prev_X is not None:
+    if prev_full_eigvecs is not None and prev_X is not None and prev_full_eigvals is not None:
         x_new = X[-1]                          # newest embedding
         s = prev_X @ x_new                     # (n_prev,) similarity vector
         U_prev = prev_full_eigvecs             # (n_prev, n_prev) orthonormal
