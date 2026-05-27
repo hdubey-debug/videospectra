@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vnvideo"
+version = "0.1.0a1"
+description = "Spectral video understanding library — von Neumann entropy, motion, anomaly, shot detection, and recurrence over user-supplied embeddings."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Harsh Dubey", email = "harsh.dubey@jacks.sdstate.edu" },
+]
+keywords = ["video", "embeddings", "spectral", "von-neumann-entropy", "shot-detection"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy>=1.24",
+    "pydantic>=2.0",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.23",
+    "websockets>=11",
+]
+dev = [
+    "pytest>=7",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4",
+    "ruff>=0.1",
+    "mypy>=1.5",
+    "httpx>=0.25",
+]
+
+[project.scripts]
+vnvideo = "vnvideo.cli:main"
+
+[project.urls]
+Repository = "https://github.com/anthropics/vnvideo"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vnvideo"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "vnvideo/",
+    "tests/",
+    "docs/",
+    "examples/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "PL"]
+ignore = [
+    "E501",   # long lines (formatter handles)
+    "PLR0913",
+    "PLR2004",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+ignore_missing_imports = true
