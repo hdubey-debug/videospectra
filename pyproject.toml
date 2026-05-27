@@ -104,6 +104,10 @@ ignore = [
 # Lazy imports inside cli.py functions are intentional — keeps
 # `vnvideo --version` from pulling in fastapi/uvicorn/torch transitively.
 "vnvideo/cli.py" = ["PLC0415"]
+# Examples use module-level singletons for expensive model state; this
+# is the right pattern for one-model-per-process and a global is the
+# clearest expression of that.
+"examples/*.py" = ["PLW0603", "PLC0415"]
 # Legacy code copied verbatim for parity testing — do not modify.
 "tests/fixtures/legacy_compute_entropy.py" = [
     "UP006", "UP007", "UP035", "UP045", "PLR0912", "PLR0915",
