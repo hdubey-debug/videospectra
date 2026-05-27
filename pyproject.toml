@@ -94,6 +94,13 @@ ignore = [
 # Verbatim port of compute_entropy from von-neumann-dashboard/server.py
 # (kept byte-identical for parity testing). Do not refactor.
 "vnvideo/analytics/spectral.py" = ["PLR0912", "PLR0915"]
+# WebSocket session loop is inherently long-bodied (accept, warmup,
+# message loop, finally). Splitting hurts readability more than it helps.
+"vnvideo/server/routes.py" = ["PLR0915"]
+# LegacyDashboardWebSocketSink dispatches across 11+ event subclasses;
+# the flat if/elif is clearer than a dispatch dict given the asymmetric
+# logic in each branch.
+"vnvideo/server/sinks.py" = ["PLR0911", "PLR0912"]
 # Legacy code copied verbatim for parity testing — do not modify.
 "tests/fixtures/legacy_compute_entropy.py" = [
     "UP006", "UP007", "UP035", "UP045", "PLR0912", "PLR0915",

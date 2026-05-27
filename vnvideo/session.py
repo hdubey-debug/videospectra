@@ -474,25 +474,11 @@ class Session:
             frame_emb = arr[0]
 
         # 2) Spectral analytics
+        # Emission order: ShotBoundary, AnomalyAlert, Recurrence first,
+        # then FrameMetrics LAST as the per-frame flush signal so an
+        # aggregating sink can render a single per-frame UI update.
         if frame_emb is not None and self._spectral is not None:
             update = self._spectral.update(frame_emb)
-            await self._emit(
-                FrameMetrics(
-                    session_id=self.session_id,
-                    source_id=frame.source_id,
-                    frame_id=frame.frame_id,
-                    monotonic_ts=frame.monotonic_ts,
-                    wall_ts=datetime.now(timezone.utc),
-                    payload=FrameMetricsPayload(
-                        entropy_norm=update.entropy_norm,
-                        motion_score=update.motion_score,
-                        anomaly_score=update.anomaly_score,
-                        buffer_fill=update.buffer_fill,
-                        infer_ms=infer_ms,
-                        effective_rank=update.effective_rank,
-                    ),
-                )
-            )
             if update.is_shot_boundary:
                 await self._emit(
                     ShotBoundary(
@@ -507,7 +493,6 @@ class Session:
                         ),
                     )
                 )
-            # Sustained-anomaly alert
             should_fire, sustained = self._anomaly_tracker.step(update.anomaly_score)
             if should_fire:
                 await self._emit(
@@ -539,6 +524,23 @@ class Session:
                         ),
                     )
                 )
+            await self._emit(
+                FrameMetrics(
+                    session_id=self.session_id,
+                    source_id=frame.source_id,
+                    frame_id=frame.frame_id,
+                    monotonic_ts=frame.monotonic_ts,
+                    wall_ts=datetime.now(timezone.utc),
+                    payload=FrameMetricsPayload(
+                        entropy_norm=update.entropy_norm,
+                        motion_score=update.motion_score,
+                        anomaly_score=update.anomaly_score,
+                        buffer_fill=update.buffer_fill,
+                        infer_ms=infer_ms,
+                        effective_rank=update.effective_rank,
+                    ),
+                )
+            )
 
         # 3) Clip accumulation (fire-and-forget when full)
         if self.clip_embedder is not None and self.clip_config is not None:
