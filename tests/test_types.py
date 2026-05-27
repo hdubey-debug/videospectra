@@ -1,6 +1,7 @@
 """Tests for vnvideo.types — Frame, Capabilities, enums."""
 from __future__ import annotations
 
+import dataclasses
 import io
 
 import pytest
@@ -19,13 +20,13 @@ def _make_jpeg_bytes(width: int = 64, height: int = 48, color: tuple[int, int, i
 class TestFrame:
     def test_frame_is_frozen(self) -> None:
         f = Frame.from_pil(Image.new("RGB", (4, 4)), source_id="s", frame_id=0)
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             f.frame_id = 1  # type: ignore[misc]
 
     def test_frame_image_field_is_not_silently_swapped(self) -> None:
         original = Image.new("RGB", (4, 4))
         f = Frame.from_pil(original, source_id="s", frame_id=0)
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             f.image = Image.new("RGB", (8, 8))  # type: ignore[misc]
 
     def test_from_jpeg_roundtrip(self) -> None:
@@ -82,7 +83,7 @@ class TestCapabilities:
 
     def test_frozen(self) -> None:
         c = Capabilities(spectral_analytics=False, clip_events=False, prompts=False)
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             c.spectral_analytics = True  # type: ignore[misc]
 
 
