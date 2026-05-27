@@ -43,6 +43,10 @@ class WebSocketSink:
 
     The canonical wire format for new integrators. Used by the
     ``/ws/v1/events`` route.
+
+    The sink does NOT own the WebSocket lifecycle — closing the WS is
+    the route handler's responsibility. ``aclose()`` is a no-op so the
+    sink can be removed cleanly without forcing a disconnect.
     """
 
     name: str = "websocket"
@@ -51,15 +55,20 @@ class WebSocketSink:
         self._ws = ws
 
     async def emit(self, event: Event) -> None:
-        # ``mode='json'`` makes datetime objects render as ISO strings
-        await self._ws.send_json(event.model_dump(mode="json"))
+        # ``mode='json'`` makes datetime objects render as ISO strings.
+        # If the WS is already closed, swallow the failure so the
+        # SinkRunner's failure-threshold counter doesn't trip on a
+        # benign disconnect.
+        if self._ws.application_state == WebSocketState.DISCONNECTED:
+            return
+        try:
+            await self._ws.send_json(event.model_dump(mode="json"))
+        except (RuntimeError, OSError) as exc:
+            logger.debug("WebSocketSink emit dropped (likely disconnect): %s", exc)
 
     async def aclose(self) -> None:
-        if self._ws.client_state != WebSocketState.DISCONNECTED:
-            try:
-                await self._ws.close()
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("WebSocketSink close raised: %s", exc)
+        # Route owns the WebSocket lifecycle.
+        return
 
 
 # ---------------------------------------------------------------------------
@@ -194,11 +203,16 @@ class LegacyDashboardWebSocketSink:
         logger.debug("legacy-dashboard sink ignoring unknown event type: %s", type(event).__name__)
 
     async def _send(self, payload: dict) -> None:
-        await self._ws.send_json(payload)
+        # If the WS is already closed, swallow the failure so the
+        # SinkRunner's failure-threshold counter doesn't trip on a
+        # benign disconnect.
+        if self._ws.application_state == WebSocketState.DISCONNECTED:
+            return
+        try:
+            await self._ws.send_json(payload)
+        except (RuntimeError, OSError) as exc:
+            logger.debug("legacy ws sink send dropped (likely disconnect): %s", exc)
 
     async def aclose(self) -> None:
-        if self._ws.client_state != WebSocketState.DISCONNECTED:
-            try:
-                await self._ws.close()
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("legacy ws sink close raised: %s", exc)
+        # Route owns the WebSocket lifecycle.
+        return
