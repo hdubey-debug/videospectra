@@ -24,7 +24,6 @@ from vnvideo.events import (
     FrameMetrics,
     PromptAdded,
     PromptRemoved,
-    Recurrence,
     SessionInfo,
     ShotBoundary,
     Status,
@@ -83,12 +82,12 @@ class LegacyDashboardWebSocketSink:
     and expects ONE message per frame with all derived fields flat:
 
         {status: "ok", entropy_norm, motion_score, anomaly_score,
-         is_anomaly, is_shot_boundary, shot_count, recurrence,
+         is_anomaly, is_shot_boundary, shot_count,
          buffer_fill, infer_ms, clip_event_scores, clip_infer_ms,
          clip_progress, clip_total}
 
-    Strategy: buffer per-frame derived events (ShotBoundary, Recurrence)
-    by frame_id; flush as a combined message when FrameMetrics for the
+    Strategy: buffer per-frame derived events (ShotBoundary) by
+    frame_id; flush as a combined message when FrameMetrics for the
     same frame_id arrives. FrameMetrics arrives LAST per frame by the
     Session emission order — see ``Session._process_frame_inner``.
 
@@ -157,15 +156,6 @@ class LegacyDashboardWebSocketSink:
                 self._partial[event.frame_id]["is_shot_boundary"] = True
                 self._partial[event.frame_id]["shot_count"] = event.payload.shot_count
             return
-        if isinstance(event, Recurrence):
-            if event.frame_id is not None:
-                self._partial.setdefault(event.frame_id, {})
-                self._partial[event.frame_id]["recurrence"] = {
-                    "angle": round(event.payload.angle_deg, 1),
-                    "steps_ago": event.payload.steps_ago,
-                    "seconds_ago": event.payload.seconds_ago,
-                }
-            return
         if isinstance(event, AnomalyAlert):
             # The continuous score is already on FrameMetrics; the alert
             # itself just sets is_anomaly. No-op for the flat dict.
@@ -188,7 +178,6 @@ class LegacyDashboardWebSocketSink:
                 "is_anomaly": event.payload.anomaly_score > 0.5,
                 "is_shot_boundary": partial.get("is_shot_boundary", False),
                 "shot_count": partial.get("shot_count", self._shot_count),
-                "recurrence": partial.get("recurrence"),
                 "buffer_fill": event.payload.buffer_fill,
                 "infer_ms": round(event.payload.infer_ms, 1),
                 "clip_event_scores": self._clip_event_scores,

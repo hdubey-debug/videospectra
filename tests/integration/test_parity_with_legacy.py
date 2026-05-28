@@ -131,6 +131,3 @@ async def test_full_session_metrics_match_legacy() -> None:
             legacy["anomaly_score"], abs=1e-9
         ), f"frame {i}: anomaly_score drift"
         assert new_ev.payload.buffer_fill == legacy["buffer_fill"]
-        assert new_ev.payload.effective_rank == pytest.approx(
-            legacy["effective_rank"], abs=1e-9
-        )

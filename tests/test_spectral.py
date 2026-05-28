@@ -36,7 +36,7 @@ class TestParityVsLegacy:
     to the legacy compute_entropy function on the same input sequence."""
 
     def test_parity_30_frames(self) -> None:
-        cfg = SpectralConfig()  # defaults: 30 / 30 / 3 / 0.5 / 15 / 10 / 600 / 0.3
+        cfg = SpectralConfig()  # defaults: 30 / 30 / 3 / 0.5 / 0.3
         embeddings = _random_embeddings(n=cfg.window_frames, d=64, seed=42)
 
         analyzer = SpectralAnalyzer(cfg)
@@ -83,7 +83,6 @@ class TestParityVsLegacy:
                 f"frame {i}: anomaly_score drift"
             )
             assert new.is_anomaly == legacy["is_anomaly"]
-            assert new.effective_rank == pytest.approx(legacy["effective_rank"], abs=1e-9)
             assert new.buffer_fill == legacy["buffer_fill"]
 
     def test_parity_60_frames_with_jump(self) -> None:
@@ -212,32 +211,6 @@ class TestProperties:
         assert shot_count <= 3, f"shot boundary fired too often: {shot_count}"
         assert shot_count >= 1
 
-    def test_recurrence_detects_repeat(self) -> None:
-        # Build a sequence that repeats: A...A B...B A...A
-        # Recurrence should trigger when the second copy of A matches.
-        cfg = SpectralConfig(
-            window_frames=10,
-            top_k_eigen=10,
-            top_k_vec=3,
-            min_recurrence_gap_frames=10,
-            recurrence_threshold_deg=15.0,
-            max_subspace_history=200,
-        )
-        seg_a = _random_embeddings(n=15, d=32, seed=20)
-        seg_b = l2_normalize(_random_embeddings(n=15, d=32, seed=21) + 2.0)
-        embeddings = np.vstack([seg_a, seg_b, seg_a])
-
-        analyzer = SpectralAnalyzer(cfg)
-        recurrence_seen = False
-        for emb in embeddings:
-            u = analyzer.update(emb)
-            if u.recurrence is not None:
-                recurrence_seen = True
-                assert u.recurrence["angle_deg"] < cfg.recurrence_threshold_deg
-                assert u.recurrence["steps_ago"] >= cfg.min_recurrence_gap_frames
-        assert recurrence_seen
-
-
 # ---------------------------------------------------------------------------
 # Memory & isolation
 # ---------------------------------------------------------------------------
@@ -252,14 +225,6 @@ class TestStateManagement:
             u = analyzer.update(emb)
         assert u.buffer_fill == 10
         assert len(analyzer._state.embedding_buffer) == 10
-
-    def test_subspace_history_capped(self) -> None:
-        cfg = SpectralConfig(window_frames=10, max_subspace_history=20)
-        analyzer = SpectralAnalyzer(cfg)
-        embeddings = _random_embeddings(n=200, d=32, seed=0)
-        for emb in embeddings:
-            analyzer.update(emb)
-        assert len(analyzer._state.subspace_history) <= cfg.max_subspace_history
 
     def test_reset_clears_state(self) -> None:
         cfg = SpectralConfig()
@@ -324,9 +289,11 @@ class TestVerbatimPort:
         new = _spectral_step(buf, None, None, 30, 3, 0.3)
         legacy = legacy_compute_entropy(buf, None, None, 30, 3)
 
-        # First element is the result dict — keys must match exactly.
-        assert set(new[0].keys()) == set(legacy[0].keys())
-        for key in ("entropy_norm", "motion_score", "anomaly_score", "effective_rank"):
+        # The legacy fixture's result dict is a SUPERSET of new[0] (still
+        # carries effective_rank — see fixture file, which is frozen).
+        # The new result dict's keys must all appear in legacy's keys.
+        assert set(new[0].keys()).issubset(set(legacy[0].keys()))
+        for key in ("entropy_norm", "motion_score", "anomaly_score"):
             assert new[0][key] == pytest.approx(legacy[0][key], abs=1e-12)
 
 

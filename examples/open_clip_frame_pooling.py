@@ -125,6 +125,7 @@ def make_session() -> Session:
         clip_embedder=clip_emb,
         text_embedder=text_emb,
         spectral_config=SpectralConfig(),
-        clip_config=ClipConfig(clip_frames=8, clip_stride=8),
+        clip_config=ClipConfig(clip_duration_seconds=4.0, clip_stride_seconds=4.0),
+        source_fps=2.0,
         embedder_concurrency=1,
     )

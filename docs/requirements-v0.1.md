@@ -2,7 +2,7 @@
 
 ## Why this exists
 
-The von-neumann-dashboard demo proved that a small spectral pipeline (von Neumann entropy of a sliding embedding window, plus motion / anomaly / shot / recurrence signals) gives a useful real-time read on video content. v0.1 turns that working demo into a publishable Python package so that:
+The von-neumann-dashboard demo proved that a small spectral pipeline (von Neumann entropy of a sliding embedding window, plus motion / anomaly / shot signals) gives a useful real-time read on video content. v0.1 turns that working demo into a publishable Python package so that:
 
 - researchers can import `SpectralAnalyzer` and feed in any embedding sequence
 - tinkerers can `pip install`, hand vnvideo a small "setup file" that loads their model, and get a working web dashboard at `127.0.0.1:8765`
@@ -52,9 +52,9 @@ The von-neumann-dashboard demo proved that a small spectral pipeline (von Neuman
 - `pytest` is GPU-free (uses `DummyEmbedder` / `ColorHistogramEmbedder`)
 - `vnvideo demo` opens a working dashboard at `http://127.0.0.1:8765`
 - `vnvideo serve --setup examples/rzenembed_full.py` reproduces the original demo end-to-end on a GPU node
-- All 12 architecture invariants enforced (see `architecture-v0.1.md`)
+- All 13 architecture invariants enforced (see `architecture-v0.1.md`)
 
-## The 12 hard invariants
+## The 13 hard invariants
 
 1. `Session` owns processing state only — never opens sockets, never reads files
 2. Events flow exclusively via sinks. `process_frame(frame) -> None`
@@ -68,3 +68,4 @@ The von-neumann-dashboard demo proved that a small spectral pipeline (von Neuman
 10. Reference UI loads zero remote assets — Plotly is bundled in `vnvideo/server/static/`
 11. Adding a new **implementation** of an existing embedder/source/sink role requires zero changes to `vnvideo/`
 12. Adding a new **role** or **analytic** is a core change — we don't pretend otherwise
+13. Session is FPS-aware via `source_fps`; clip windowing and time math derive from it. `ClipConfig` is seconds-based, resolved to integer frames at construction.

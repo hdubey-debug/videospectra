@@ -26,7 +26,7 @@ def _build_full_session() -> Session:
         clip_embedder=DummyEmbedder.make_video(),
         text_embedder=DummyEmbedder.make_text(),
         spectral_config=SpectralConfig(window_frames=5),
-        clip_config=__import__("vnvideo.session", fromlist=["ClipConfig"]).ClipConfig(clip_frames=4, clip_stride=4),
+        clip_config=__import__("vnvideo.session", fromlist=["ClipConfig"]).ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
         embedder_concurrency=2,
     )
 

@@ -74,7 +74,6 @@ class FrameMetricsPayload(_StrictModel):
     anomaly_score: float
     buffer_fill: int
     infer_ms: float
-    effective_rank: float
 
 
 class ShotBoundaryPayload(_StrictModel):
@@ -86,12 +85,6 @@ class AnomalyAlertPayload(_StrictModel):
     anomaly_score: float
     threshold: float
     sustained_frames: int
-
-
-class RecurrencePayload(_StrictModel):
-    angle_deg: float
-    steps_ago: int
-    seconds_ago: float
 
 
 class ClipScore(_StrictModel):
@@ -164,11 +157,6 @@ class AnomalyAlert(BaseEvent):
     payload: AnomalyAlertPayload
 
 
-class Recurrence(BaseEvent):
-    type: Literal["recurrence"] = "recurrence"
-    payload: RecurrencePayload
-
-
 class ClipScores(BaseEvent):
     type: Literal["clip_scores"] = "clip_scores"
     payload: ClipScoresPayload
@@ -214,7 +202,6 @@ Event = Annotated[
         FrameMetrics,
         ShotBoundary,
         AnomalyAlert,
-        Recurrence,
         ClipScores,
         PromptAdded,
         PromptRemoved,

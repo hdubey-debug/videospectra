@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vnvideo"
-version = "0.1.0a1"
-description = "Spectral video understanding library — von Neumann entropy, motion, anomaly, shot detection, and recurrence over user-supplied embeddings."
+version = "0.1.0a2"
+description = "Spectral video understanding library — von Neumann entropy, motion, anomaly, and shot detection over user-supplied embeddings."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }

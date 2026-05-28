@@ -76,6 +76,7 @@ class Session:
         sinks: Sequence[Sink] = (),
         spectral_config: SpectralConfig | None = None,
         clip_config: ClipConfig | None = None,
+        source_fps: float = 2.0,
         session_id: str | None = None,
         embedder_concurrency: int = 1,
         sink_max_queue: int = 100,
@@ -98,14 +99,32 @@ class Session:
     async def warmup(self) -> None: ...
 ```
 
+```python
+@dataclass(frozen=True)
+class ClipConfig:
+    clip_duration_seconds: float = 4.0   # length of each clip in seconds
+    clip_stride_seconds: float = 4.0     # gap between successive clip starts
+    max_events: int = 10
+```
+
 Key invariants enforced at construction:
 
 - At least one of `{frame_embedder, clip_embedder}` must be set
 - If `clip_embedder` is set, `text_embedder` must also be set, and their `space_id` and `embed_dim` must match
 - If `clip_embedder` is set, `clip_config` is required
 - If `frame_embedder` is set and `spectral_config` is set, the spectral pipeline activates
+- `source_fps` must be > 0
 
 `process_frame` returns `None`. All events leave via sinks. A slow clip embed never blocks the frame loop — clip work runs in a fire-and-forget task.
+
+### Frame rate
+
+`source_fps` is the rate at which the caller promises the upstream frame source will deliver frames. The Session does **not** sample or decimate — driving the source at the promised rate is the source's responsibility (the browser dashboard, video reader, or RTSP capture). `source_fps` is used internally to:
+
+- Resolve `ClipConfig.clip_duration_seconds` / `clip_stride_seconds` into integer frame counts: `clip_frames = max(1, round(clip_duration_seconds * source_fps))`. The Session logs a warning if rounding shifts the requested seconds by more than 5%.
+- Report seconds-accurate timestamps in `SessionInfo.config`.
+
+`SpectralConfig.window_frames` stays frame-count based — eigendecomposition is fundamentally counted in samples, not seconds. Convert manually if you need a fixed time window: `window_frames = round(seconds * source_fps)`.
 
 ## Frame
 
@@ -155,10 +174,9 @@ For each frame, the Session emits events in this order:
 
 1. `ShotBoundary` — if the rising-edge anomaly detector fired
 2. `AnomalyAlert` — if a sustained run crossed the threshold this frame
-3. `Recurrence` — if a matching subspace was found in history
-4. `FrameMetrics` — always last per frame
+3. `FrameMetrics` — always last per frame
 
-`FrameMetrics` is the per-frame "flush" signal that aggregators (e.g., the bundled legacy dashboard sink) rely on to render one combined UI update. The conditional events (`ShotBoundary`, `AnomalyAlert`, `Recurrence`) belong to the same frame's processing and arrive *before* the `FrameMetrics` for that frame_id.
+`FrameMetrics` is the per-frame "flush" signal that aggregators (e.g., the bundled legacy dashboard sink) rely on to render one combined UI update. The conditional events (`ShotBoundary`, `AnomalyAlert`) belong to the same frame's processing and arrive *before* the `FrameMetrics` for that frame_id.
 
 `ClipScores` is asynchronous — it fires when a clip-level embedder finishes a clip (every ~8 frames at 2 FPS, in a fire-and-forget task). It carries the `frame_id` of the last frame in the clip but is not bound to that frame's per-frame ordering.
 
@@ -180,7 +198,7 @@ Every event is a Pydantic model that serializes as:
 }
 ```
 
-Discriminated by `type`. Subclasses include `frame_metrics`, `shot_boundary`, `anomaly_alert`, `recurrence`, `clip_scores`, `prompt_added`, `prompt_removed`, `frame_dropped`, `status`, `embedder_error`, `session_info`. Discriminated parsing is via `Event = Annotated[Union[...], Field(discriminator='type')]`.
+Discriminated by `type`. Subclasses include `frame_metrics`, `shot_boundary`, `anomaly_alert`, `clip_scores`, `prompt_added`, `prompt_removed`, `frame_dropped`, `status`, `embedder_error`, `session_info`. Discriminated parsing is via `Event = Annotated[Union[...], Field(discriminator='type')]`.
 
 ## Embedder concurrency
 
@@ -190,7 +208,7 @@ Sync embed functions are dispatched via `loop.run_in_executor(ThreadPoolExecutor
 
 ## Spectral analytics
 
-`vnvideo/analytics/spectral.py` ports the math from `server.py:177-306` byte-equivalent. The `SpectralAnalyzer` class owns the sliding window, eigendecomposition, motion / anomaly / shot / recurrence state. It is GPU-free, pure numpy.
+`vnvideo/analytics/spectral.py` ports the math from `server.py:177-306` byte-equivalent. The `SpectralAnalyzer` class owns the sliding window, eigendecomposition, motion / anomaly / shot state. It is GPU-free, pure numpy.
 
 ```python
 @dataclass
@@ -199,9 +217,6 @@ class SpectralConfig:
     top_k_eigen: int = 30
     top_k_vec: int = 3
     anomaly_threshold: float = 0.5
-    recurrence_threshold_deg: float = 15.0
-    min_recurrence_gap_frames: int = 10
-    max_subspace_history: int = 600
     ema_alpha: float = 0.3
 
 @dataclass
@@ -212,9 +227,7 @@ class SpectralUpdate:
     is_anomaly: bool
     is_shot_boundary: bool
     shot_count: int
-    recurrence: dict | None
     buffer_fill: int
-    effective_rank: float
     infer_ms_spectral: float
 
 class SpectralAnalyzer:
@@ -227,7 +240,7 @@ Shot boundary uses rising-edge detection on `is_anomaly` (not the raw score). Al
 
 ## Hard invariants
 
-The same 12 from `requirements-v0.1.md`, restated as one-line rules a reviewer can verify mechanically:
+The same 13 from `requirements-v0.1.md`, restated as one-line rules a reviewer can verify mechanically:
 
 1. `vnvideo/session.py` does not import `socket`, `fastapi`, `uvicorn`, or `open()` files
 2. `Session.process_frame` returns `None`
@@ -241,3 +254,4 @@ The same 12 from `requirements-v0.1.md`, restated as one-line rules a reviewer c
 10. `grep "https://" vnvideo/server/static/dashboard.html` returns nothing
 11. To add a new ImageEmbedder backend, the user creates a setup file outside `vnvideo/` — no edits to `vnvideo/` source
 12. Adding a new role (e.g., audio embedder) requires editing `vnvideo/embedders.py`, `vnvideo/session.py`, `vnvideo/events.py`
+13. Session is FPS-aware via `source_fps`; `ClipConfig` is seconds-based, resolved to integer frames at construction

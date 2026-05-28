@@ -25,8 +25,6 @@ from vnvideo.events import (
     PromptAddedPayload,
     PromptRemoved,
     PromptRemovedPayload,
-    Recurrence,
-    RecurrencePayload,
     SessionInfo,
     SessionInfoPayload,
     ShotBoundary,
@@ -57,7 +55,6 @@ class TestEnvelope:
                 anomaly_score=0.05,
                 buffer_fill=30,
                 infer_ms=12.3,
-                effective_rank=4.5,
             ),
         )
         assert e.schema_version == "0.1"
@@ -92,7 +89,6 @@ class TestEnvelope:
                     anomaly_score=0.05,
                     buffer_fill=30,
                     infer_ms=12.3,
-                    effective_rank=4.5,
                 ),
                 unknown_field="x",
             )
@@ -121,7 +117,6 @@ class TestRoundtrip:
                     anomaly_score=0.07,
                     buffer_fill=30,
                     infer_ms=12.3,
-                    effective_rank=4.8,
                 ),
             ),
             (ShotBoundary, ShotBoundaryPayload, dict(shot_count=3, anomaly_at_cut=0.7)),
@@ -129,11 +124,6 @@ class TestRoundtrip:
                 AnomalyAlert,
                 AnomalyAlertPayload,
                 dict(anomaly_score=0.85, threshold=0.5, sustained_frames=6),
-            ),
-            (
-                Recurrence,
-                RecurrencePayload,
-                dict(angle_deg=8.2, steps_ago=45, seconds_ago=22.5),
             ),
             (
                 ClipScores,

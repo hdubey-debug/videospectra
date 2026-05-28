@@ -41,7 +41,11 @@ def register_websocket_routes(
             session_factory,
             sink_factory=lambda websocket, session: LegacyDashboardWebSocketSink(
                 websocket,
-                clip_total=session.clip_config.clip_frames if session.clip_config else 8,
+                clip_total=(
+                    session._resolved_clip.clip_frames
+                    if session._resolved_clip is not None
+                    else 8
+                ),
             ),
         )
 

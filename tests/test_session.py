@@ -267,7 +267,7 @@ class TestClipEmbedding:
             clip_embedder=DummyEmbedder.make_video(),
             text_embedder=DummyEmbedder.make_text(),
             sinks=[sink],
-            clip_config=ClipConfig(clip_frames=4, clip_stride=4),
+            clip_config=ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
         )
         await session.start()
         for i in range(8):
@@ -304,7 +304,7 @@ class TestClipEmbedding:
             clip_embedder=slow_clip,
             text_embedder=DummyEmbedder.make_text(),
             sinks=[sink],
-            clip_config=ClipConfig(clip_frames=4, clip_stride=4),
+            clip_config=ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
             embedder_concurrency=2,  # Don't serialize frame and clip
         )
         await session.start()

@@ -39,6 +39,7 @@ def _build_demo_session_factory() -> Callable:
         return Session(
             frame_embedder=ColorHistogramEmbedder.make_image(),
             spectral_config=SpectralConfig(window_frames=30),
+            source_fps=2.0,
         )
 
     return make_session

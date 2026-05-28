@@ -40,7 +40,7 @@ def _build_full_session() -> Session:
         clip_embedder=DummyEmbedder.make_video(),
         text_embedder=DummyEmbedder.make_text(),
         spectral_config=SpectralConfig(window_frames=5),
-        clip_config=ClipConfig(clip_frames=4, clip_stride=4),
+        clip_config=ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
         embedder_concurrency=2,
     )
 
@@ -86,7 +86,6 @@ class TestEndToEndDemo:
                         "frame_metrics",
                         "shot_boundary",
                         "anomaly_alert",
-                        "recurrence",
                         "clip_scores",
                         "prompt_added",
                         "prompt_removed",
@@ -112,7 +111,7 @@ class TestCapabilityIsolation:
                     ws.send_bytes(_make_jpeg(i))
                 # Read exactly n_frames events — color-histogram on random
                 # color images produces FrameMetrics per frame with no
-                # shot/recurrence/anomaly_alert (no sustained crossings).
+                # shot/anomaly_alert (no sustained crossings).
                 seen_types = set()
                 for _ in range(n_frames):
                     msg = ws.receive_json()

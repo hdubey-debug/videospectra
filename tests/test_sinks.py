@@ -49,7 +49,6 @@ def _make_metric(frame_id: int) -> Event:
             anomaly_score=0.1,
             buffer_fill=1,
             infer_ms=1.0,
-            effective_rank=1.0,
         ),
     )
 

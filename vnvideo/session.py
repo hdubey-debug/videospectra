@@ -54,8 +54,6 @@ from vnvideo.events import (
     PromptAddedPayload,
     PromptRemoved,
     PromptRemovedPayload,
-    Recurrence,
-    RecurrencePayload,
     SessionInfo,
     SessionInfoPayload,
     ShotBoundary,
@@ -76,14 +74,57 @@ logger = logging.getLogger(__name__)
 class ClipConfig:
     """Configuration for clip-level event detection.
 
-    Defaults match the von-neumann-dashboard demo: 8 frames per clip,
-    no overlap (stride == clip_frames). At 2 FPS, that's 4 seconds of
-    video per clip.
+    Seconds-based: ``clip_duration_seconds`` is the length of each clip
+    in wall-clock seconds; ``clip_stride_seconds`` is the gap between
+    successive clip starts. The Session converts these into integer
+    frame counts using its ``source_fps``.
+
+    Defaults match the von-neumann-dashboard demo: 4-second clips with
+    no overlap (stride == duration). At the default 2 FPS, that resolves
+    to 8 frames per clip.
     """
 
-    clip_frames: int = 8
-    clip_stride: int = 8
+    clip_duration_seconds: float = 4.0
+    clip_stride_seconds: float = 4.0
     max_events: int = 10
+
+
+@dataclass(frozen=True)
+class _ResolvedClipConfig:
+    """Frame-count form of ClipConfig, derived from source_fps."""
+
+    clip_frames: int
+    clip_stride: int
+
+
+def _resolve_clip_config(cfg: ClipConfig, source_fps: float) -> _ResolvedClipConfig:
+    """Convert seconds-based ClipConfig into integer frame counts.
+
+    Logs a warning if rounding shifts either field by more than 5%.
+    """
+    if cfg.clip_duration_seconds <= 0:
+        raise ValueError(
+            f"clip_duration_seconds must be > 0, got {cfg.clip_duration_seconds!r}"
+        )
+    if cfg.clip_stride_seconds <= 0:
+        raise ValueError(
+            f"clip_stride_seconds must be > 0, got {cfg.clip_stride_seconds!r}"
+        )
+    clip_frames = max(1, round(cfg.clip_duration_seconds * source_fps))
+    clip_stride = max(1, round(cfg.clip_stride_seconds * source_fps))
+    # Warn when rounding distorts the requested duration noticeably.
+    actual_dur = clip_frames / source_fps
+    actual_stride = clip_stride / source_fps
+    for label, requested, actual in (
+        ("clip_duration_seconds", cfg.clip_duration_seconds, actual_dur),
+        ("clip_stride_seconds", cfg.clip_stride_seconds, actual_stride),
+    ):
+        if requested > 0 and abs(actual - requested) / requested > 0.05:
+            logger.warning(
+                "ClipConfig.%s requested %.3fs but rounds to %.3fs at source_fps=%.3f",
+                label, requested, actual, source_fps,
+            )
+    return _ResolvedClipConfig(clip_frames=clip_frames, clip_stride=clip_stride)
 
 
 class EmbedderValidationError(RuntimeError):
@@ -162,6 +203,7 @@ class Session:
         sinks: Sequence[Sink] = (),
         spectral_config: SpectralConfig | None = None,
         clip_config: ClipConfig | None = None,
+        source_fps: float = 2.0,
         session_id: str | None = None,
         embedder_concurrency: int = 1,
         sink_max_queue: int = 100,
@@ -169,12 +211,18 @@ class Session:
         anomaly_min_sustained: int = 3,
     ) -> None:
         self._validate_embedder_combination(frame_embedder, clip_embedder, text_embedder, clip_config)
+        if source_fps <= 0:
+            raise ValueError(f"source_fps must be > 0, got {source_fps!r}")
 
         self.frame_embedder = frame_embedder
         self.clip_embedder = clip_embedder
         self.text_embedder = text_embedder
         self.spectral_config = spectral_config
         self.clip_config = clip_config
+        self.source_fps = float(source_fps)
+        self._resolved_clip = (
+            _resolve_clip_config(clip_config, self.source_fps) if clip_config is not None else None
+        )
         self.session_id = session_id or uuid.uuid4().hex[:8]
         self.embedder_concurrency = max(1, embedder_concurrency)
         self.sink_max_queue = sink_max_queue
@@ -300,8 +348,8 @@ class Session:
         if self.frame_embedder is not None:
             _ = await self._call_embedder(self.frame_embedder, [sample_frame], role="frame")
 
-        if self.clip_embedder is not None and self.clip_config is not None:
-            sample_clip = [sample_frame] * self.clip_config.clip_frames
+        if self.clip_embedder is not None and self._resolved_clip is not None:
+            sample_clip = [sample_frame] * self._resolved_clip.clip_frames
             _ = await self._call_embedder(self.clip_embedder, [sample_clip], role="clip")
 
         if self.text_embedder is not None:
@@ -336,9 +384,12 @@ class Session:
         if self.spectral_config is not None:
             cfg["window_frames"] = self.spectral_config.window_frames
             cfg["anomaly_threshold"] = self.spectral_config.anomaly_threshold
-        if self.clip_config is not None:
-            cfg["clip_frames"] = self.clip_config.clip_frames
-            cfg["clip_stride"] = self.clip_config.clip_stride
+        if self.clip_config is not None and self._resolved_clip is not None:
+            cfg["clip_duration_seconds"] = self.clip_config.clip_duration_seconds
+            cfg["clip_stride_seconds"] = self.clip_config.clip_stride_seconds
+            cfg["clip_frames"] = self._resolved_clip.clip_frames
+            cfg["clip_stride"] = self._resolved_clip.clip_stride
+        cfg["source_fps"] = self.source_fps
         cfg["embedder_concurrency"] = self.embedder_concurrency
         caps = self.capabilities()
         return SessionInfo(
@@ -474,8 +525,8 @@ class Session:
             frame_emb = arr[0]
 
         # 2) Spectral analytics
-        # Emission order: ShotBoundary, AnomalyAlert, Recurrence first,
-        # then FrameMetrics LAST as the per-frame flush signal so an
+        # Emission order: ShotBoundary, AnomalyAlert first, then
+        # FrameMetrics LAST as the per-frame flush signal so an
         # aggregating sink can render a single per-frame UI update.
         if frame_emb is not None and self._spectral is not None:
             update = self._spectral.update(frame_emb)
@@ -509,21 +560,6 @@ class Session:
                         ),
                     )
                 )
-            if update.recurrence is not None:
-                await self._emit(
-                    Recurrence(
-                        session_id=self.session_id,
-                        source_id=frame.source_id,
-                        frame_id=frame.frame_id,
-                        monotonic_ts=frame.monotonic_ts,
-                        wall_ts=datetime.now(timezone.utc),
-                        payload=RecurrencePayload(
-                            angle_deg=float(update.recurrence["angle_deg"]),
-                            steps_ago=int(update.recurrence["steps_ago"]),
-                            seconds_ago=float(update.recurrence["seconds_ago"]),
-                        ),
-                    )
-                )
             await self._emit(
                 FrameMetrics(
                     session_id=self.session_id,
@@ -537,29 +573,30 @@ class Session:
                         anomaly_score=update.anomaly_score,
                         buffer_fill=update.buffer_fill,
                         infer_ms=infer_ms,
-                        effective_rank=update.effective_rank,
                     ),
                 )
             )
 
         # 3) Clip accumulation (fire-and-forget when full)
-        if self.clip_embedder is not None and self.clip_config is not None:
+        if self.clip_embedder is not None and self._resolved_clip is not None:
+            n_clip = self._resolved_clip.clip_frames
+            n_stride = self._resolved_clip.clip_stride
             self._clip_accumulator.append(frame)
             if (
-                len(self._clip_accumulator) >= self.clip_config.clip_frames
+                len(self._clip_accumulator) >= n_clip
                 and not self._clip_pending
             ):
                 self._clip_pending = True
-                clip_frames = self._clip_accumulator[: self.clip_config.clip_frames]
+                clip_frames = self._clip_accumulator[:n_clip]
                 # Advance by stride
-                self._clip_accumulator = self._clip_accumulator[self.clip_config.clip_stride :]
+                self._clip_accumulator = self._clip_accumulator[n_stride:]
                 task = asyncio.create_task(self._embed_clip_and_emit(clip_frames))
                 self._clip_tasks.add(task)
                 task.add_done_callback(self._clip_tasks.discard)
             # Cap accumulator at 2x clip_frames to prevent unbounded growth
-            cap = self.clip_config.clip_frames * 2
+            cap = n_clip * 2
             if len(self._clip_accumulator) > cap:
-                self._clip_accumulator = self._clip_accumulator[-self.clip_config.clip_frames:]
+                self._clip_accumulator = self._clip_accumulator[-n_clip:]
 
         # Frame processing wall-time (debug only — not emitted as event)
         _ = (time.perf_counter() - t_frame_start) * 1000.0

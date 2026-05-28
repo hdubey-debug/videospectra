@@ -182,12 +182,10 @@ def make_session() -> Session:
             top_k_eigen=30,
             top_k_vec=3,
             anomaly_threshold=0.5,
-            recurrence_threshold_deg=15.0,
-            min_recurrence_gap_frames=10,
-            max_subspace_history=600,
             ema_alpha=0.3,
         ),
-        clip_config=ClipConfig(clip_frames=8, clip_stride=8),
+        clip_config=ClipConfig(clip_duration_seconds=4.0, clip_stride_seconds=4.0),
+        source_fps=2.0,
         # Serialize all calls into the single GPU.
         embedder_concurrency=1,
     )

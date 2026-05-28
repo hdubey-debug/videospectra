@@ -1,4 +1,4 @@
-"""Spectral analytics — von Neumann entropy, motion, anomaly, shots, recurrence.
+"""Spectral analytics — von Neumann entropy, motion, anomaly, shots.
 
 This module is the byte-equivalent port of the original
 ``compute_entropy`` from ``von-neumann-dashboard/server.py`` lines
@@ -9,7 +9,6 @@ can verify identical metrics against the source of truth.
 The class owns:
 
 - A sliding embedding buffer (``deque(maxlen=window_frames)``)
-- Subspace history (capped at ``max_subspace_history`` for recurrence)
 - Rising-edge state for shot detection
 - EMA-smoothed top eigenvectors (for sign-stable display)
 - Previous full eigendecomposition (for subspace-fit anomaly)
@@ -39,19 +38,10 @@ class SpectralConfig:
     """How many eigenvalues to report (top-K, descending)."""
 
     top_k_vec: int = 3
-    """How many top eigenvectors to track for motion/recurrence."""
+    """How many top eigenvectors to track for motion."""
 
     anomaly_threshold: float = 0.5
     """Above this, the frame is anomalous; rising edge = shot boundary."""
-
-    recurrence_threshold_deg: float = 15.0
-    """Subspace angle below this (degrees) signals recurrence."""
-
-    min_recurrence_gap_frames: int = 10
-    """Don't match a subspace against itself — require at least this many frames apart."""
-
-    max_subspace_history: int = 600
-    """Cap on subspace history for recurrence. 600 = 5 min at 2 FPS."""
 
     ema_alpha: float = 0.3
     """EMA weight on the latest eigenvectors (vs previous smoothed)."""
@@ -79,14 +69,8 @@ class SpectralUpdate:
     shot_count: int
     """Cumulative count of rising-edge transitions since reset."""
 
-    recurrence: dict | None
-    """If the current subspace matches one ≥ min_recurrence_gap_frames ago, info dict; else None."""
-
     buffer_fill: int
     """Number of frames currently in the sliding window (0..window_frames)."""
-
-    effective_rank: float
-    """exp(entropy) — heuristic count of active visual modes."""
 
     infer_ms_spectral: float
     """Wall time for the spectral computation, milliseconds."""
@@ -129,9 +113,6 @@ def _spectral_step(
     mask = eigvals > 1e-15
     H = -np.sum(eigvals[mask] * np.log(eigvals[mask]))
     H_norm = H / np.log(n) if n > 1 else 0.0
-
-    # Effective rank: exp(H) = number of active visual modes
-    effective_rank = float(np.exp(H)) if H > 0 else 1.0
 
     # Top-k eigenvalues (descending)
     top_eigvals = eigvals[::-1][:top_k_eigen].tolist()
@@ -215,7 +196,6 @@ def _spectral_step(
     result = {
         "entropy_norm": float(H_norm),
         "entropy": float(H),
-        "effective_rank": effective_rank,
         "n": n,
         "eigenvalues": top_eigvals,
         "top_eigenvectors": top_vecs,
@@ -245,7 +225,6 @@ class _SpectralState:
     prev_full_eigvals: np.ndarray | None = None
     prev_full_eigvecs: np.ndarray | None = None
     prev_X: np.ndarray | None = None
-    subspace_history: list[np.ndarray] = field(default_factory=list)
     shot_count: int = 0
     prev_anomaly: float = 0.0
 
@@ -255,7 +234,7 @@ class SpectralAnalyzer:
 
     Call :meth:`update` once per new L2-normalized embedding; receive
     a :class:`SpectralUpdate` with entropy/motion/anomaly/shot
-    boundary/recurrence metrics.
+    boundary metrics.
 
     Pure numpy — no torch, no GPU. Safe to construct one per Session;
     state lives entirely on the instance.
@@ -294,35 +273,6 @@ class SpectralAnalyzer:
             st.prev_X,
         )
 
-        # Recurrence detection — only once the window is full
-        recurrence: dict | None = None
-        if raw_vecs and len(raw_vecs[0]) == cfg.window_frames:
-            V_curr = np.column_stack(raw_vecs)
-            st.subspace_history.append(V_curr)
-            if len(st.subspace_history) > cfg.max_subspace_history:
-                st.subspace_history = st.subspace_history[-cfg.max_subspace_history:]
-
-            if len(st.subspace_history) > cfg.min_recurrence_gap_frames:
-                min_angle = 180.0
-                min_idx = -1
-                # Search history[0 .. len - gap - 1] for closest match
-                search_end = len(st.subspace_history) - cfg.min_recurrence_gap_frames
-                for j in range(search_end):
-                    V_past = st.subspace_history[j]
-                    M = V_past.T @ V_curr
-                    _, sigmas, _ = np.linalg.svd(M)
-                    angle = float(np.degrees(np.arccos(np.clip(sigmas[-1], -1, 1))))
-                    if angle < min_angle:
-                        min_angle = angle
-                        min_idx = j
-                if min_angle < cfg.recurrence_threshold_deg:
-                    steps_ago = len(st.subspace_history) - 1 - min_idx
-                    recurrence = {
-                        "angle_deg": round(min_angle, 1),
-                        "steps_ago": steps_ago,
-                        "seconds_ago": round(steps_ago * 0.5, 1),  # assumes 2 FPS
-                    }
-
         # Shot boundary — rising edge on anomaly_score > threshold
         cur_anom = float(result["anomaly_score"])
         is_shot = cur_anom > cfg.anomaly_threshold and st.prev_anomaly <= cfg.anomaly_threshold
@@ -346,8 +296,6 @@ class SpectralAnalyzer:
             is_anomaly=bool(result["is_anomaly"]),
             is_shot_boundary=is_shot,
             shot_count=st.shot_count,
-            recurrence=recurrence,
             buffer_fill=int(result["buffer_fill"]),
-            effective_rank=float(result["effective_rank"]),
             infer_ms_spectral=elapsed_ms,
         )
