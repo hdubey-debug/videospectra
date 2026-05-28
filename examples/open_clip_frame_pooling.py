@@ -1,4 +1,4 @@
-"""vnvideo setup file — open_clip image/text + frame-pooling for clips.
+"""videospectra setup file — open_clip image/text + frame-pooling for clips.
 
 Uses the stock OpenCLIP ViT-L-14 image and text encoders. Clip
 embeddings are produced by averaging per-frame image embeddings —
@@ -10,12 +10,12 @@ Requirements::
 
     pip install open_clip_torch torch
 
-(``open_clip_torch`` is NOT a vnvideo dependency — install it
+(``open_clip_torch`` is NOT a videospectra dependency — install it
 yourself.)
 
 Run::
 
-    vnvideo serve --setup examples/open_clip_frame_pooling.py
+    videospectra serve --setup examples/open_clip_frame_pooling.py
 """
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ import logging
 
 import numpy as np
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
-from vnvideo.session import ClipConfig, Session
-from vnvideo.types import Frame
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
+from videospectra.session import ClipConfig, Session
+from videospectra.types import Frame
 
 logger = logging.getLogger(__name__)
 

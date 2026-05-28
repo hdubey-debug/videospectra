@@ -13,11 +13,11 @@ import numpy as np
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ColorHistogramEmbedder, DummyEmbedder, ImageEmbedder
-from vnvideo.events import parse_event
-from vnvideo.server import create_app
-from vnvideo.session import ClipConfig, Session
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ColorHistogramEmbedder, DummyEmbedder, ImageEmbedder
+from videospectra.events import parse_event
+from videospectra.server import create_app
+from videospectra.session import ClipConfig, Session
 
 
 def _make_jpeg(seed: int = 0) -> bytes:

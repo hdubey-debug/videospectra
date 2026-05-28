@@ -1,4 +1,4 @@
-"""vnvideo setup file — full RzenEmbed (Qihoo360 Qwen2-VL) pipeline.
+"""videospectra setup file — full RzenEmbed (Qihoo360 Qwen2-VL) pipeline.
 
 Reproduces the original von-neumann-dashboard demo end-to-end:
 
@@ -22,7 +22,7 @@ Requirements:
 
 Run::
 
-    vnvideo serve --setup examples/rzenembed_full.py --port 8765
+    videospectra serve --setup examples/rzenembed_full.py --port 8765
 """
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ from pathlib import Path
 
 import numpy as np
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
-from vnvideo.session import ClipConfig, Session
-from vnvideo.types import Frame
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
+from videospectra.session import ClipConfig, Session
+from videospectra.types import Frame
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ def _get_model():
     if _MODEL is not None:
         return _MODEL
 
-    # Layout: rzenembed/vnvideo/examples/this_file.py  -> grandparent = rzenembed/
-    # RzenEmbed is a sibling of vnvideo/ under rzenembed/, so grandparent/RzenEmbed.
+    # Layout: rzenembed/videospectra/examples/this_file.py  -> grandparent = rzenembed/
+    # RzenEmbed is a sibling of videospectra/ under rzenembed/, so grandparent/RzenEmbed.
     candidates = [
         Path(__file__).resolve().parent.parent.parent / "RzenEmbed",  # standard layout
         _RZEN_SRC_DEFAULT,  # absolute fallback for the original development tree
@@ -74,7 +74,7 @@ def _get_model():
         raise RuntimeError(
             "RzenEmbed source not found in any candidate path: "
             f"{[str(c) for c in candidates]}. "
-            "Clone https://github.com/Qihoo360/RzenEmbed beside vnvideo/ or "
+            "Clone https://github.com/Qihoo360/RzenEmbed beside videospectra/ or "
             "set the path explicitly in this file."
         )
     sys.path.insert(0, str(rzen_src))
@@ -150,7 +150,7 @@ def _embed_texts(texts: list[str]) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Session factory — the entry point vnvideo CLI calls
+# Session factory — the entry point videospectra CLI calls
 # ---------------------------------------------------------------------------
 
 

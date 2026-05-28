@@ -1,6 +1,6 @@
-# vnvideo — guide for AI coding agents
+# videospectra — guide for AI coding agents
 
-You are operating inside `vnvideo`, a Python package for spectral video understanding (von Neumann entropy + motion / anomaly / shot detection + clip scoring). Read this file in full before making changes. If the user asks you to "explain this project," lead with the architecture tree in §2 and keep it compact; do not paraphrase the marketing.
+You are operating inside `videospectra`, a Python package for spectral video understanding (von Neumann entropy + motion / anomaly / shot detection + clip scoring). Read this file in full before making changes. If the user asks you to "explain this project," lead with the architecture tree in §2 and keep it compact; do not paraphrase the marketing.
 
 ## 0. Project one-liner
 
@@ -9,7 +9,7 @@ A source-agnostic, BYOM (bring-your-own-model) video analytics library: image / 
 ## 1. Repository layout
 
 ```
-vnvideo/                       Python package
+videospectra/                       Python package
 ├── _internal/normalize.py     L2 normalize (called unconditionally by Session)
 ├── types.py                   Frame, Capabilities
 ├── embedders.py               ImageEmbedder / VideoEmbedder / TextEmbedder + helpers
@@ -23,7 +23,7 @@ vnvideo/                       Python package
 │   ├── routes.py              HTTP + WebSocket routes
 │   ├── sinks.py               WebSocketSink + LegacyDashboardWebSocketSink
 │   └── static/dashboard.html  bundled UI (Plotly served locally — no CDN)
-└── cli.py                     `vnvideo demo` + `vnvideo serve --setup`
+└── cli.py                     `videospectra demo` + `videospectra serve --setup`
 
 tests/                         pytest, GPU-free
 ├── fixtures/legacy_compute_entropy.py    FROZEN — parity source of truth
@@ -81,10 +81,10 @@ Per-frame emission order, enforced in `Session._process_frame_inner`:
 ### New ImageEmbedder backend (e.g. CLIP, DINO, your own model)
 
 ```python
-# my_setup.py  — outside vnvideo/, no edits to vnvideo source
-from vnvideo.embedders import ImageEmbedder
-from vnvideo.session import Session
-from vnvideo.analytics.spectral import SpectralConfig
+# my_setup.py  — outside videospectra/, no edits to videospectra source
+from videospectra.embedders import ImageEmbedder
+from videospectra.session import Session
+from videospectra.analytics.spectral import SpectralConfig
 
 def embed_fn(frames):  # list[Frame] -> np.ndarray (N, embed_dim)
     return my_model.encode([f.image for f in frames])
@@ -99,7 +99,7 @@ def make_session():
     )
 ```
 
-Then: `vnvideo serve --setup my_setup.py`.
+Then: `videospectra serve --setup my_setup.py`.
 
 ### New Sink
 
@@ -107,33 +107,33 @@ Implement the `Sink` Protocol (`name: str`, `async def emit(event)`, `async def 
 
 ### New FrameSource
 
-Implement the `FrameSource` Protocol in `vnvideo/sources.py`: an async iterator of `Frame`. Drive it via `run_source(source, session)`. Source is responsible for hitting the promised `source_fps` — the Session does not sample or decimate.
+Implement the `FrameSource` Protocol in `videospectra/sources.py`: an async iterator of `Frame`. Drive it via `run_source(source, session)`. Source is responsible for hitting the promised `source_fps` — the Session does not sample or decimate.
 
 ## 4. Hard invariants (do not violate)
 
-1. `vnvideo/session.py` does not import `socket`, `fastapi`, `uvicorn`, or open files
+1. `videospectra/session.py` does not import `socket`, `fastapi`, `uvicorn`, or open files
 2. `Session.process_frame` returns `None`; all events leave via sinks
 3. `Session.add_sink` wraps the sink in `SinkRunner` with `sink_max_queue` and `sink_overflow`
 4. `Session.__init__(embedder_concurrency=1)` is the default
 5. `Session` calls `l2_normalize` on every embedding unconditionally; no `normalized` flag exists on any BYOM wrapper
 6. `ImageEmbedder.__post_init__` raises on empty `space_id`; `Session.__init__` raises on `clip_embedder.space_id != text_embedder.space_id`
-7. `vnvideo/analytics/` contains exactly one module: `spectral.py`
-8. `vnvideo/events.py` defines all events and does not `import fastapi`
-9. `vnvideo/cli.py` defaults `--host` to `127.0.0.1`; warns on `0.0.0.0`
-10. `grep "https://" vnvideo/server/static/dashboard.html` returns nothing (no CDN assets)
-11. Adding a new implementation of an existing role: zero changes to `vnvideo/`
+7. `videospectra/analytics/` contains exactly one module: `spectral.py`
+8. `videospectra/events.py` defines all events and does not `import fastapi`
+9. `videospectra/cli.py` defaults `--host` to `127.0.0.1`; warns on `0.0.0.0`
+10. `grep "https://" videospectra/server/static/dashboard.html` returns nothing (no CDN assets)
+11. Adding a new implementation of an existing role: zero changes to `videospectra/`
 12. Adding a new role or analytic IS a core change — don't pretend otherwise
 13. Session is FPS-aware via `source_fps`; `ClipConfig` is seconds-based, resolved to integer frames at construction
 
 ## 5. Pitfalls
 
-- **Pydantic v2 + Python 3.9**: Pydantic resolves annotation strings at runtime via `get_type_hints`; PEP 604 `X | Y` fails to eval. `vnvideo/events.py` uses `typing.Optional` / `typing.Union` even though ruff prefers `X | Y`. The per-file ruff ignore is in `pyproject.toml` — leave it alone.
+- **Pydantic v2 + Python 3.9**: Pydantic resolves annotation strings at runtime via `get_type_hints`; PEP 604 `X | Y` fails to eval. `videospectra/events.py` uses `typing.Optional` / `typing.Union` even though ruff prefers `X | Y`. The per-file ruff ignore is in `pyproject.toml` — leave it alone.
 - **Parity gate**: `tests/fixtures/legacy_compute_entropy.py` is FROZEN. It's a verbatim copy of `compute_entropy` from `von-neumann-dashboard/server.py:177-306` and `TestLegacyFixtureFreshness` will fail if it drifts from the live source. The parity test asserts new spectral fields match within 1e-9. Do not edit the fixture; if the upstream file changes, regenerate by copy-paste and re-pin.
 - **`effective_rank` is gone** from the public API but still computed in the frozen fixture — that's intentional. The parity assertion for `effective_rank` was removed; don't add it back.
 - **`Recurrence` is gone** entirely (event, payload, config knobs, spectral state). Don't reintroduce.
 - **Per-frame emission order**: `ShotBoundary` / `AnomalyAlert` FIRST, `FrameMetrics` LAST. The legacy dashboard sink buffers partials by `frame_id` and flushes on FrameMetrics. Reordering breaks the UI.
 - **mypy must be run explicitly** — `ruff check` does not type-check. Run both before declaring done.
-- **COVERAGE_FILE on shared FS**: pytest-cov uses SQLite. On the shared filesystem you'll get lock errors unless you set `COVERAGE_FILE=/tmp/.coverage.vnvideo`.
+- **COVERAGE_FILE on shared FS**: pytest-cov uses SQLite. On the shared filesystem you'll get lock errors unless you set `COVERAGE_FILE=/tmp/.coverage.videospectra`.
 - **GPU is optional**: tests must stay GPU-free. Use `DummyEmbedder` / `ColorHistogramEmbedder` in tests.
 - **`Session._resolved_clip` is private** (leading underscore) but the dashboard route reads it. That's OK — `routes.py` lives in the same package — but don't read it from user-facing code; the seconds-based `ClipConfig` is the contract.
 
@@ -143,20 +143,20 @@ Implement the `FrameSource` Protocol in `vnvideo/sources.py`: an async iterator 
 # Always activate the venv first
 source /mmfs2/home/jacks.local/hdubey/scratch/02-video-embeddings/rzenembed/rzen_venv/bin/activate
 
-cd /mmfs1/scratch/jacks.local/hdubey/02-video-embeddings/rzenembed/vnvideo
+cd /mmfs1/scratch/jacks.local/hdubey/02-video-embeddings/rzenembed/videospectra
 
 # Full test suite (155 tests, < 10 s, ~90% coverage)
-COVERAGE_FILE=/tmp/.coverage.vnvideo pytest tests/ --cov=vnvideo --cov-report=term-missing
+COVERAGE_FILE=/tmp/.coverage.videospectra pytest tests/ --cov=videospectra --cov-report=term-missing
 
 # Lint + type
-ruff check vnvideo/ tests/ examples/
-mypy vnvideo/
+ruff check videospectra/ tests/ examples/
+mypy videospectra/
 
 # Run the no-GPU demo
-vnvideo demo                 # http://127.0.0.1:8765
+videospectra demo                 # http://127.0.0.1:8765
 
 # Run a custom setup
-vnvideo serve --setup examples/rzenembed_full.py --port 8765
+videospectra serve --setup examples/rzenembed_full.py --port 8765
 
 # Build wheel/sdist
 python -m build

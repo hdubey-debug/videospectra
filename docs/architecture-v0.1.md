@@ -1,4 +1,4 @@
-# vnvideo v0.1 — Architecture
+# videospectra v0.1 — Architecture
 
 ## Dataflow
 
@@ -208,7 +208,7 @@ Sync embed functions are dispatched via `loop.run_in_executor(ThreadPoolExecutor
 
 ## Spectral analytics
 
-`vnvideo/analytics/spectral.py` ports the math from `server.py:177-306` byte-equivalent. The `SpectralAnalyzer` class owns the sliding window, eigendecomposition, motion / anomaly / shot state. It is GPU-free, pure numpy.
+`videospectra/analytics/spectral.py` ports the math from `server.py:177-306` byte-equivalent. The `SpectralAnalyzer` class owns the sliding window, eigendecomposition, motion / anomaly / shot state. It is GPU-free, pure numpy.
 
 ```python
 @dataclass
@@ -242,16 +242,16 @@ Shot boundary uses rising-edge detection on `is_anomaly` (not the raw score). Al
 
 The same 13 from `requirements-v0.1.md`, restated as one-line rules a reviewer can verify mechanically:
 
-1. `vnvideo/session.py` does not import `socket`, `fastapi`, `uvicorn`, or `open()` files
+1. `videospectra/session.py` does not import `socket`, `fastapi`, `uvicorn`, or `open()` files
 2. `Session.process_frame` returns `None`
 3. `Session.add_sink` wraps the sink in `SinkRunner` with `sink_max_queue` and `sink_overflow`
 4. `Session.__init__(embedder_concurrency=1)` is the default
 5. `Session` calls `l2_normalize` on every embedding the embedder returns, unconditionally; no `normalized` field exists on `ImageEmbedder` / `VideoEmbedder` / `TextEmbedder`
 6. `ImageEmbedder.__post_init__` raises on empty `space_id`; `Session.__init__` raises on `clip_embedder.space_id != text_embedder.space_id`
-7. `vnvideo/analytics/` contains exactly one module: `spectral.py`
-8. `vnvideo/events.py` defines all events and does not `import fastapi`
-9. `vnvideo/cli.py` defaults `--host` to `127.0.0.1` and emits a warning if the user passes `0.0.0.0`
-10. `grep "https://" vnvideo/server/static/dashboard.html` returns nothing
-11. To add a new ImageEmbedder backend, the user creates a setup file outside `vnvideo/` — no edits to `vnvideo/` source
-12. Adding a new role (e.g., audio embedder) requires editing `vnvideo/embedders.py`, `vnvideo/session.py`, `vnvideo/events.py`
+7. `videospectra/analytics/` contains exactly one module: `spectral.py`
+8. `videospectra/events.py` defines all events and does not `import fastapi`
+9. `videospectra/cli.py` defaults `--host` to `127.0.0.1` and emits a warning if the user passes `0.0.0.0`
+10. `grep "https://" videospectra/server/static/dashboard.html` returns nothing
+11. To add a new ImageEmbedder backend, the user creates a setup file outside `videospectra/` — no edits to `videospectra/` source
+12. Adding a new role (e.g., audio embedder) requires editing `videospectra/embedders.py`, `videospectra/session.py`, `videospectra/events.py`
 13. Session is FPS-aware via `source_fps`; `ClipConfig` is seconds-based, resolved to integer frames at construction

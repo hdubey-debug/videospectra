@@ -13,9 +13,9 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from vnvideo import __version__
-from vnvideo.server.routes import register_websocket_routes
-from vnvideo.session import Session
+from videospectra import __version__
+from videospectra.server.routes import register_websocket_routes
+from videospectra.session import Session
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -28,7 +28,7 @@ def create_app(session_factory: Callable[[], Session]) -> FastAPI:
     etc.). For multi-tenant / multi-camera scaling, this design is the
     natural extension point — but v0.1 ships single-session-per-WS only.
     """
-    app = FastAPI(title="vnvideo", version=__version__)
+    app = FastAPI(title="videospectra", version=__version__)
 
     # Static files: dashboard.html, plotly.min.js
     if STATIC_DIR.exists():
@@ -39,7 +39,7 @@ def create_app(session_factory: Callable[[], Session]) -> FastAPI:
         html_path = STATIC_DIR / "dashboard.html"
         if not html_path.exists():
             return HTMLResponse(
-                "<h1>vnvideo</h1><p>Dashboard not bundled in this install. "
+                "<h1>videospectra</h1><p>Dashboard not bundled in this install. "
                 "See /api/v1/info for capabilities.</p>",
                 status_code=200,
             )

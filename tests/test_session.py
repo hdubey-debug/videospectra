@@ -1,4 +1,4 @@
-"""Tests for vnvideo.session — orchestrator, validation, embedder dispatch."""
+"""Tests for videospectra.session — orchestrator, validation, embedder dispatch."""
 from __future__ import annotations
 
 import asyncio
@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import DummyEmbedder, ImageEmbedder, TextEmbedder, VideoEmbedder
-from vnvideo.events import (
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import DummyEmbedder, ImageEmbedder, TextEmbedder, VideoEmbedder
+from videospectra.events import (
     ClipScores,
     EmbedderError,
     Event,
@@ -19,13 +19,13 @@ from vnvideo.events import (
     PromptAdded,
     SessionInfo,
 )
-from vnvideo.session import (
+from videospectra.session import (
     ClipConfig,
     EmbedderValidationError,
     Session,
 )
-from vnvideo.sinks import MemorySink
-from vnvideo.types import Frame
+from videospectra.sinks import MemorySink
+from videospectra.types import Frame
 
 
 def _make_frame(i: int, color: tuple[int, int, int] = (128, 64, 32)) -> Frame:
@@ -65,7 +65,7 @@ class TestValidation:
         # Create a text embedder with a different dim
         bad_text = TextEmbedder(
             embed_dim=64,
-            space_id="vnvideo/dummy@128/test",  # same space but wrong dim
+            space_id="videospectra/dummy@128/test",  # same space but wrong dim
             embed_fn=lambda t: np.zeros((len(t), 64)),
         )
         with pytest.raises(ValueError, match="embed_dim"):
@@ -294,7 +294,7 @@ class TestClipEmbedding:
 
         slow_clip = VideoEmbedder(
             embed_dim=128,
-            space_id="vnvideo/dummy@128/test",
+            space_id="videospectra/dummy@128/test",
             embed_fn=slow_clip_embed,
         )
 

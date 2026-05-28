@@ -21,10 +21,10 @@ from typing import Callable
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from vnvideo.events import Status, StatusPayload
-from vnvideo.server.sinks import LegacyDashboardWebSocketSink, WebSocketSink
-from vnvideo.session import EmbedderValidationError, Session
-from vnvideo.types import Frame
+from videospectra.events import Status, StatusPayload
+from videospectra.server.sinks import LegacyDashboardWebSocketSink, WebSocketSink
+from videospectra.session import EmbedderValidationError, Session
+from videospectra.types import Frame
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ motion / anomaly submodules.
 """
 from __future__ import annotations
 
-from vnvideo.analytics.spectral import (
+from videospectra.analytics.spectral import (
     SpectralAnalyzer,
     SpectralConfig,
     SpectralUpdate,

@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
-from vnvideo.events import (
+from videospectra.events import (
     AnomalyAlert,
     ClipScores,
     EmbedderError,

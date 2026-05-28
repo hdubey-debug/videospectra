@@ -1,4 +1,4 @@
-"""Tests for vnvideo.events — discriminated union, JSON roundtrip, schema."""
+"""Tests for videospectra.events — discriminated union, JSON roundtrip, schema."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from vnvideo import events as events_mod
-from vnvideo.events import (
+from videospectra import events as events_mod
+from videospectra.events import (
     PAYLOAD_VERSION,
     SCHEMA_VERSION,
     AnomalyAlert,

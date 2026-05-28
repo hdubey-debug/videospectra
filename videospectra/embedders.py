@@ -11,7 +11,7 @@ Two built-in factories:
 - ``DummyEmbedder.make_*`` — deterministic random-projection vectors,
   for tests. No semantic meaning.
 - ``ColorHistogramEmbedder.make_image`` — real per-channel + grayscale
-  histograms, 256-d, for the ``vnvideo demo`` install-verification path.
+  histograms, 256-d, for the ``videospectra demo`` install-verification path.
   Pure numpy, no torch.
 """
 from __future__ import annotations
@@ -23,8 +23,8 @@ from typing import Callable, Union
 
 import numpy as np
 
-from vnvideo import spaces
-from vnvideo.types import Frame
+from videospectra import spaces
+from videospectra.types import Frame
 
 # A BYOM callable may return an ndarray directly (sync) or a coroutine
 # resolving to one (async). ``inspect.isawaitable`` + ``run_in_executor``
@@ -199,7 +199,7 @@ class DummyEmbedder:
 
 
 # ---------------------------------------------------------------------------
-# ColorHistogramEmbedder — real frame features, 256-d, for `vnvideo demo`
+# ColorHistogramEmbedder — real frame features, 256-d, for `videospectra demo`
 # ---------------------------------------------------------------------------
 
 
@@ -242,7 +242,7 @@ class ColorHistogramEmbedder:
     color/brightness changes — enough to drive entropy / motion /
     anomaly signals on a webcam — but is NOT a semantic embedder.
 
-    Intended use: ``vnvideo demo`` install-verification, smoke tests,
+    Intended use: ``videospectra demo`` install-verification, smoke tests,
     no-GPU laptop development. Do not use for real video understanding.
     """
 

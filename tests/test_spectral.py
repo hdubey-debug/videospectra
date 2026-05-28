@@ -1,4 +1,4 @@
-"""Tests for vnvideo.analytics.spectral — parity, property, performance."""
+"""Tests for videospectra.analytics.spectral — parity, property, performance."""
 from __future__ import annotations
 
 import pathlib
@@ -10,8 +10,8 @@ import numpy as np
 import pytest
 
 from tests.fixtures.legacy_compute_entropy import compute_entropy as legacy_compute_entropy
-from vnvideo._internal.normalize import l2_normalize
-from vnvideo.analytics.spectral import (
+from videospectra._internal.normalize import l2_normalize
+from videospectra.analytics.spectral import (
     SpectralAnalyzer,
     SpectralConfig,
     SpectralUpdate,

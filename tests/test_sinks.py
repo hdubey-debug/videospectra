@@ -1,4 +1,4 @@
-"""Tests for vnvideo.sinks — Sink protocol, SinkRunner backpressure, built-ins."""
+"""Tests for videospectra.sinks — Sink protocol, SinkRunner backpressure, built-ins."""
 from __future__ import annotations
 
 import asyncio
@@ -9,14 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from vnvideo.events import (
+from videospectra.events import (
     Event,
     FrameMetrics,
     FrameMetricsPayload,
     Status,
     StatusPayload,
 )
-from vnvideo.sinks import (
+from videospectra.sinks import (
     JsonlSink,
     MemorySink,
     Sink,

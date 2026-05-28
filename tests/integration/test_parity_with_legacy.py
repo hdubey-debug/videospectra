@@ -1,8 +1,8 @@
-"""Integration parity: vnvideo end-to-end vs the legacy reference math.
+"""Integration parity: videospectra end-to-end vs the legacy reference math.
 
 Phase 6 already verifies that ``SpectralAnalyzer.update`` matches
 ``legacy_compute_entropy`` at 1e-9. This file extends the gate to the
-full session pipeline: an embedding stream piped into a vnvideo
+full session pipeline: an embedding stream piped into a videospectra
 Session must emit FrameMetrics with values matching the legacy
 reference for the same stream.
 
@@ -20,13 +20,13 @@ import pytest
 from PIL import Image
 
 from tests.fixtures.legacy_compute_entropy import compute_entropy as legacy_compute_entropy
-from vnvideo._internal.normalize import l2_normalize
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ImageEmbedder
-from vnvideo.events import FrameMetrics
-from vnvideo.session import Session
-from vnvideo.sinks import MemorySink
-from vnvideo.types import Frame
+from videospectra._internal.normalize import l2_normalize
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ImageEmbedder
+from videospectra.events import FrameMetrics
+from videospectra.session import Session
+from videospectra.sinks import MemorySink
+from videospectra.types import Frame
 
 
 def _random_normalized(n: int, d: int = 64, seed: int = 0) -> np.ndarray:

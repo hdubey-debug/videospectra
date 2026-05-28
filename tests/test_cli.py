@@ -1,4 +1,4 @@
-"""Tests for vnvideo.cli — entrypoint and subcommands."""
+"""Tests for videospectra.cli — entrypoint and subcommands."""
 from __future__ import annotations
 
 import subprocess
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from vnvideo import __version__
-from vnvideo import cli as cli_mod
-from vnvideo.cli import _build_demo_session_factory, _load_setup_module, build_parser
+from videospectra import __version__
+from videospectra import cli as cli_mod
+from videospectra.cli import _build_demo_session_factory, _load_setup_module, build_parser
 
 
 def _python() -> str:
@@ -19,7 +19,7 @@ def _python() -> str:
 class TestParser:
     def test_version_flag(self) -> None:
         result = subprocess.run(
-            [_python(), "-m", "vnvideo.cli", "--version"],
+            [_python(), "-m", "videospectra.cli", "--version"],
             capture_output=True,
             text=True,
             check=False,
@@ -29,7 +29,7 @@ class TestParser:
 
     def test_no_subcommand_exits_2(self) -> None:
         result = subprocess.run(
-            [_python(), "-m", "vnvideo.cli"], capture_output=True, text=True, check=False
+            [_python(), "-m", "videospectra.cli"], capture_output=True, text=True, check=False
         )
         assert result.returncode == 2
 
@@ -66,8 +66,8 @@ class TestSetupLoader:
     def test_setup_with_make_session_loads(self, tmp_path: Path) -> None:
         good = tmp_path / "good.py"
         good.write_text(
-            "from vnvideo.embedders import DummyEmbedder\n"
-            "from vnvideo.session import Session\n"
+            "from videospectra.embedders import DummyEmbedder\n"
+            "from videospectra.session import Session\n"
             "def make_session():\n"
             "    return Session(frame_embedder=DummyEmbedder.make_image())\n"
         )
@@ -97,7 +97,7 @@ class TestDemoFactory:
 
 class TestNoTorchInDemo:
     def test_cli_module_does_not_import_torch_at_load(self) -> None:
-        # The vnvideo.cli module itself must not pull in torch at import.
+        # The videospectra.cli module itself must not pull in torch at import.
         # We can't observe sys.modules cleanly inside rzen_venv (torch is
         # there for other reasons), so check the source file.
         src = Path(cli_mod.__file__).read_text()

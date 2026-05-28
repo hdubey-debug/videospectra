@@ -1,4 +1,4 @@
-"""Tests for vnvideo.sources — Protocol shape + run_source helper."""
+"""Tests for videospectra.sources — Protocol shape + run_source helper."""
 from __future__ import annotations
 
 import asyncio
@@ -7,11 +7,11 @@ from collections.abc import AsyncIterator
 import pytest
 from PIL import Image
 
-from vnvideo import sources as sources_mod
-from vnvideo.embedders import DummyEmbedder
-from vnvideo.session import Session
-from vnvideo.sources import FrameSource, run_source
-from vnvideo.types import Frame
+from videospectra import sources as sources_mod
+from videospectra.embedders import DummyEmbedder
+from videospectra.session import Session
+from videospectra.sources import FrameSource, run_source
+from videospectra.types import Frame
 
 
 class _InlineSource:

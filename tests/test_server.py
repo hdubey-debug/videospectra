@@ -1,4 +1,4 @@
-"""Tests for vnvideo.server — app, routes, sinks, dashboard."""
+"""Tests for videospectra.server — app, routes, sinks, dashboard."""
 from __future__ import annotations
 
 import io
@@ -7,10 +7,10 @@ import json
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ColorHistogramEmbedder, DummyEmbedder
-from vnvideo.server import create_app
-from vnvideo.session import Session
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ColorHistogramEmbedder, DummyEmbedder
+from videospectra.server import create_app
+from videospectra.session import Session
 
 
 def _build_demo_session() -> Session:
@@ -26,7 +26,7 @@ def _build_full_session() -> Session:
         clip_embedder=DummyEmbedder.make_video(),
         text_embedder=DummyEmbedder.make_text(),
         spectral_config=SpectralConfig(window_frames=5),
-        clip_config=__import__("vnvideo.session", fromlist=["ClipConfig"]).ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
+        clip_config=__import__("videospectra.session", fromlist=["ClipConfig"]).ClipConfig(clip_duration_seconds=2.0, clip_stride_seconds=2.0),
         embedder_concurrency=2,
     )
 

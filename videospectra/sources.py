@@ -3,7 +3,7 @@
 v0.1 ships only the Protocol and a ``run_source`` convenience helper.
 Concrete implementations (video file reader, webcam, RTSP) are deferred
 to v0.1.1; the WebSocket frame ingestion path is implemented in
-``vnvideo/server/routes.py``, not here, because it depends on FastAPI.
+``videospectra/server/routes.py``, not here, because it depends on FastAPI.
 """
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
-from vnvideo.session import Session
-from vnvideo.types import Frame
+from videospectra.session import Session
+from videospectra.types import Frame
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-"""Canonical ``space_id`` constants for vnvideo built-in embedders.
+"""Canonical ``space_id`` constants for videospectra built-in embedders.
 
 A ``space_id`` is opaque, required, and used only for equality checks
 (specifically: ``clip_embedder.space_id == text_embedder.space_id``).
@@ -7,5 +7,5 @@ but the framework treats it as an opaque string.
 """
 from __future__ import annotations
 
-DUMMY: str = "vnvideo/dummy@128/test"
-COLOR_HISTOGRAM: str = "vnvideo/color-histogram@256/raw"
+DUMMY: str = "videospectra/dummy@128/test"
+COLOR_HISTOGRAM: str = "videospectra/color-histogram@256/raw"

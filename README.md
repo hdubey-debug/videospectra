@@ -1,4 +1,4 @@
-# vnvideo
+# videospectra
 
 Spectral video understanding as a library. Drop in your own image / video / text embedder, push frames in, get entropy / motion / anomaly / shot-boundary / clip-similarity events out.
 
@@ -19,7 +19,7 @@ Status: **v0.1 alpha.** API is not yet frozen; see `docs/requirements-v0.1.md` f
 ## What this gives you
 
 ```
-vnvideo
+videospectra
 ├── Bring-Your-Own-Model embedders
 │   ├── ImageEmbedder  — per-frame features
 │   ├── VideoEmbedder  — clip-level features
@@ -47,8 +47,8 @@ vnvideo
 │   ├── /api/v1/info, /health, prompt CRUD
 │   └── bundled dashboard (Plotly served locally, zero CDN)
 └── CLI
-    ├── vnvideo demo                  — ColorHistogramEmbedder, no GPU
-    └── vnvideo serve --setup <file>  — load your make_session() factory
+    ├── videospectra demo                  — ColorHistogramEmbedder, no GPU
+    └── videospectra serve --setup <file>  — load your make_session() factory
 ```
 
 ## What this does NOT give you (yet)
@@ -57,7 +57,7 @@ vnvideo
 out-of-scope-in-v0.1
 ├── Built-in model integrations    — you wrap them (examples/ shows three)
 ├── Webcam / RTSP frame sources    — bring your own (FrameSource Protocol)
-├── Batch CLI (vnvideo analyze)    — coming in v0.2
+├── Batch CLI (videospectra analyze)    — coming in v0.2
 ├── Multi-camera / multi-session   — one Session per process
 ├── Authentication                 — binds 127.0.0.1 by default
 ├── Adaptive sampling              — caller drives the FPS
@@ -76,7 +76,7 @@ pip install -e .[server,dev]
 ## 30-second hello
 
 ```bash
-vnvideo demo                 # no GPU, ColorHistogramEmbedder + spectral
+videospectra demo                 # no GPU, ColorHistogramEmbedder + spectral
 # open http://127.0.0.1:8765, allow webcam, watch entropy/motion/shot light up
 ```
 
@@ -85,10 +85,10 @@ vnvideo demo                 # no GPU, ColorHistogramEmbedder + spectral
 ```python
 import numpy as np
 from PIL import Image
-from vnvideo.embedders import ImageEmbedder
-from vnvideo.session import Session, ClipConfig
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.sinks import MemorySink
+from videospectra.embedders import ImageEmbedder
+from videospectra.session import Session, ClipConfig
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.sinks import MemorySink
 
 def embed_frames(frames):
     # frames: list[Frame]  — frames[i].image is a PIL.Image

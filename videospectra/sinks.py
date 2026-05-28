@@ -22,7 +22,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import IO, Literal, Protocol, runtime_checkable
 
-from vnvideo.events import Event
+from videospectra.events import Event
 
 logger = logging.getLogger(__name__)
 

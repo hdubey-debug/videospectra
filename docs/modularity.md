@@ -1,14 +1,14 @@
-# vnvideo v0.1 — Modularity Guide
+# videospectra v0.1 — Modularity Guide
 
-vnvideo is modular along five axes. Three are externally pluggable (you write code outside `vnvideo/`); two are internally modular (changes require editing core).
+videospectra is modular along five axes. Three are externally pluggable (you write code outside `videospectra/`); two are internally modular (changes require editing core).
 
 | Axis | External? | How |
 | --- | --- | --- |
 | Embedders | Yes | Wrap any callable in `ImageEmbedder` / `VideoEmbedder` / `TextEmbedder` |
 | Sources | Yes | Implement the `FrameSource` Protocol |
 | Sinks | Yes | Implement the `Sink` Protocol |
-| Analytics | No | Edit `vnvideo/analytics/` and `vnvideo/session.py` |
-| Event types | No | Edit `vnvideo/events.py` and consumers |
+| Analytics | No | Edit `videospectra/analytics/` and `videospectra/session.py` |
+| Event types | No | Edit `videospectra/events.py` and consumers |
 
 ## How to add an embedder backend (external)
 
@@ -18,8 +18,8 @@ Write a setup file. The CLI loads it as a Python module and calls `make_session(
 # my_setup.py
 import numpy as np
 from PIL import Image
-from vnvideo import Session, ImageEmbedder
-from vnvideo.analytics import SpectralConfig
+from videospectra import Session, ImageEmbedder
+from videospectra.analytics import SpectralConfig
 
 def embed_my_model(frames):
     # frames: list[Frame]; return np.ndarray of shape (len(frames), 512)
@@ -38,19 +38,19 @@ def make_session() -> Session:
     )
 ```
 
-Then: `vnvideo serve --setup my_setup.py`.
+Then: `videospectra serve --setup my_setup.py`.
 
 Notes:
 
-- `space_id` is required and must be non-empty. Pick a string unique to your model + dimension + task; vnvideo only checks it for equality across the clip/text pair.
-- vnvideo always re-applies L2 normalization to your output. You can pre-normalize or not — the math is invariant.
+- `space_id` is required and must be non-empty. Pick a string unique to your model + dimension + task; videospectra only checks it for equality across the clip/text pair.
+- videospectra always re-applies L2 normalization to your output. You can pre-normalize or not — the math is invariant.
 - Your `embed_fn` can be sync or async. If sync, it runs in a thread pool. If async, it is awaited.
 
 ## How to add a frame source (external)
 
 ```python
-from vnvideo import Frame, Session
-from vnvideo.sources import FrameSource, run_source
+from videospectra import Frame, Session
+from videospectra.sources import FrameSource, run_source
 
 class MyVideoSource:
     source_id = "my-video"
@@ -72,8 +72,8 @@ async def main(session: Session):
 ## How to add a sink (external)
 
 ```python
-from vnvideo.sinks import Sink
-from vnvideo.events import Event
+from videospectra.sinks import Sink
+from videospectra.events import Event
 
 class MySink:
     name = "my-sink"

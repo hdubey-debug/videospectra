@@ -1,6 +1,6 @@
-# vnvideo examples
+# videospectra examples
 
-Three setup files showing the BYOM (Bring Your Own Model) contract. Each defines a `make_session() -> Session` function; pass the file to `vnvideo serve --setup <path>` and the CLI builds the FastAPI app around it.
+Three setup files showing the BYOM (Bring Your Own Model) contract. Each defines a `make_session() -> Session` function; pass the file to `videospectra serve --setup <path>` and the CLI builds the FastAPI app around it.
 
 | File | Embedder | Why use it |
 | --- | --- | --- |
@@ -11,22 +11,22 @@ Three setup files showing the BYOM (Bring Your Own Model) contract. Each defines
 Run any of them:
 
 ```bash
-vnvideo serve --setup examples/color_histogram_demo.py
+videospectra serve --setup examples/color_histogram_demo.py
 # or
-vnvideo serve --setup examples/rzenembed_full.py --port 8765
+videospectra serve --setup examples/rzenembed_full.py --port 8765
 ```
 
 Then open `http://127.0.0.1:8765/`.
 
 ## Writing your own
 
-A setup file is plain Python. The only contract: it must define a function named `make_session` that returns a `Session`. Build any combination of `ImageEmbedder`, `VideoEmbedder`, `TextEmbedder` you want; vnvideo handles the rest.
+A setup file is plain Python. The only contract: it must define a function named `make_session` that returns a `Session`. Build any combination of `ImageEmbedder`, `VideoEmbedder`, `TextEmbedder` you want; videospectra handles the rest.
 
 ```python
 # my_setup.py
-from vnvideo.embedders import ImageEmbedder
-from vnvideo.session import Session
-from vnvideo.analytics.spectral import SpectralConfig
+from videospectra.embedders import ImageEmbedder
+from videospectra.session import Session
+from videospectra.analytics.spectral import SpectralConfig
 
 def embed_my_model(frames):
     # frames: list[Frame]; return np.ndarray of shape (len(frames), 512)

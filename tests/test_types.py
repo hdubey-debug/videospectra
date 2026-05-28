@@ -1,4 +1,4 @@
-"""Tests for vnvideo.types — Frame, Capabilities, enums."""
+"""Tests for videospectra.types — Frame, Capabilities, enums."""
 from __future__ import annotations
 
 import dataclasses
@@ -7,7 +7,7 @@ import io
 import pytest
 from PIL import Image
 
-from vnvideo.types import Capabilities, Capability, Frame, TaskType
+from videospectra.types import Capabilities, Capability, Frame, TaskType
 
 
 def _make_jpeg_bytes(width: int = 64, height: int = 48, color: tuple[int, int, int] = (128, 64, 32)) -> bytes:

@@ -1,12 +1,12 @@
-"""Minimal vnvideo setup file — frame-only ColorHistogram embedder.
+"""Minimal videospectra setup file — frame-only ColorHistogram embedder.
 
-This is the SAME session ``vnvideo demo`` builds internally; it exists
+This is the SAME session ``videospectra demo`` builds internally; it exists
 as a standalone example so users can see the shape of a setup file
 they would write themselves.
 
 Run::
 
-    vnvideo serve --setup examples/color_histogram_demo.py
+    videospectra serve --setup examples/color_histogram_demo.py
 
 Open http://127.0.0.1:8765 in a browser, click START to enable the
 webcam, and watch entropy / motion / anomaly traces respond to scene
@@ -17,9 +17,9 @@ color histogram has no semantic content beyond color/brightness.
 """
 from __future__ import annotations
 
-from vnvideo.analytics.spectral import SpectralConfig
-from vnvideo.embedders import ColorHistogramEmbedder
-from vnvideo.session import Session
+from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ColorHistogramEmbedder
+from videospectra.session import Session
 
 
 def make_session() -> Session:

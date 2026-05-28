@@ -1,4 +1,4 @@
-"""Tests for vnvideo.embedders and vnvideo._internal.normalize."""
+"""Tests for videospectra.embedders and videospectra._internal.normalize."""
 from __future__ import annotations
 
 from dataclasses import fields
@@ -7,17 +7,17 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from vnvideo import embedders as emb_mod
-from vnvideo import spaces
-from vnvideo._internal.normalize import l2_normalize
-from vnvideo.embedders import (
+from videospectra import embedders as emb_mod
+from videospectra import spaces
+from videospectra._internal.normalize import l2_normalize
+from videospectra.embedders import (
     ColorHistogramEmbedder,
     DummyEmbedder,
     ImageEmbedder,
     TextEmbedder,
     VideoEmbedder,
 )
-from vnvideo.types import Frame
+from videospectra.types import Frame
 
 
 def _make_frame(frame_id: int = 0, color: tuple[int, int, int] = (128, 64, 32), size: tuple[int, int] = (32, 32)) -> Frame:

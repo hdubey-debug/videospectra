@@ -34,10 +34,10 @@ from typing import Any, Callable, Literal
 import numpy as np
 from PIL import Image as _PILImage
 
-from vnvideo._internal.normalize import l2_normalize
-from vnvideo.analytics.spectral import SpectralAnalyzer, SpectralConfig
-from vnvideo.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
-from vnvideo.events import (
+from videospectra._internal.normalize import l2_normalize
+from videospectra.analytics.spectral import SpectralAnalyzer, SpectralConfig
+from videospectra.embedders import ImageEmbedder, TextEmbedder, VideoEmbedder
+from videospectra.events import (
     AnomalyAlert,
     AnomalyAlertPayload,
     ClipScore,
@@ -59,8 +59,8 @@ from vnvideo.events import (
     ShotBoundary,
     ShotBoundaryPayload,
 )
-from vnvideo.sinks import OverflowPolicy, Sink, SinkRunner
-from vnvideo.types import Capabilities, Frame
+from videospectra.sinks import OverflowPolicy, Sink, SinkRunner
+from videospectra.types import Capabilities, Frame
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +241,7 @@ class Session:
         self._embed_sem = asyncio.Semaphore(self.embedder_concurrency)
         self._embed_executor = ThreadPoolExecutor(
             max_workers=self.embedder_concurrency,
-            thread_name_prefix=f"vnvideo-embed-{self.session_id}",
+            thread_name_prefix=f"videospectra-embed-{self.session_id}",
         )
 
         self._clip_accumulator: list[Frame] = []
