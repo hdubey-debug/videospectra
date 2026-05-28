@@ -1,69 +1,40 @@
-# videospectra
+<h1 align="center">videospectra</h1>
 
-Spectral video understanding as a library. Drop in your own image / video / text embedder, push frames in, get entropy / motion / anomaly / shot-boundary / clip-similarity events out.
+<p align="center">
+  Spectral video understanding as a library. Drop in your own image / video / text embedder, push frames in, get entropy / motion / anomaly / shot-boundary / clip-similarity events out.
+</p>
 
-```
-                    +-----------------------+
-   frames (PIL) --> |       Session         | --> events (Pydantic)
-                    |  spectral + clip-score |
-                    +-----------------------+
-                       ^                ^
-                       |                |
-                  ImageEmbedder     sinks: stdout / jsonl / memory / websocket
-                  VideoEmbedder
-                  TextEmbedder
-```
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-blue">
+  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue">
+  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange">
+</p>
 
-Status: **v0.1 alpha.** API is not yet frozen; see `docs/requirements-v0.1.md` for the 13 hard invariants we won't break inside v0.1.
+```mermaid
+flowchart LR
+    src[FrameSource<br/>webcam · video · RTSP] -->|Frame| sess
 
-## What this gives you
+    sess[Session<br/>orchestrator]
+    sess <-->|embed| img(ImageEmbedder<br/>BYOM)
+    sess <-->|embed clip| vid(VideoEmbedder<br/>BYOM)
+    sess <-->|embed prompt| txt(TextEmbedder<br/>BYOM)
 
-```
-videospectra
-├── Bring-Your-Own-Model embedders
-│   ├── ImageEmbedder  — per-frame features
-│   ├── VideoEmbedder  — clip-level features
-│   └── TextEmbedder   — prompts for clip scoring
-├── Session — orchestrator (process_frame -> events)
-│   ├── L2-normalizes every embedding
-│   ├── serializes embedder calls (default concurrency=1, GPU-safe)
-│   ├── source_fps + ClipConfig in seconds (clip_duration_seconds / clip_stride_seconds)
-│   └── fire-and-forget clip embedding (slow clips never block frames)
-├── Spectral analytics (pure numpy, < 5 ms / frame on CPU)
-│   ├── von Neumann entropy of the sliding window
-│   ├── motion score (spectral leverage)
-│   ├── anomaly score (subspace-fit residual)
-│   └── shot boundary (rising edge on anomaly)
-├── Events (Pydantic, discriminated union, versioned schema)
-│   ├── FrameMetrics / ShotBoundary / AnomalyAlert / ClipScores
-│   ├── PromptAdded / PromptRemoved / FrameDropped
-│   └── SessionInfo / Status / EmbedderError
-├── Sinks (with backpressure: SinkRunner + bounded queue)
-│   ├── StdoutSink / JsonlSink / MemorySink
-│   └── WebSocketSink (canonical) + LegacyDashboardWebSocketSink
-├── FastAPI server adapter  — thin wrapper over Session
-│   ├── /ws/v1/events  (canonical event stream)
-│   ├── /ws            (bundled dashboard, aggregated format)
-│   ├── /api/v1/info, /health, prompt CRUD
-│   └── bundled dashboard (Plotly served locally, zero CDN)
-└── CLI
-    ├── videospectra demo                  — ColorHistogramEmbedder, no GPU
-    └── videospectra serve --setup <file>  — load your make_session() factory
+    sess --> spec[SpectralAnalyzer<br/>entropy · motion · anomaly · shot]
+    spec --> sess
+
+    sess -->|Events| sinks[Sinks<br/>stdout · jsonl · memory · websocket]
+    sinks --> ui[Dashboard or your code]
+
+    classDef byom fill:#fff3cd,stroke:#856404,color:#000
+    class img,vid,txt byom
 ```
 
-## What this does NOT give you (yet)
+## Why use it
 
-```
-out-of-scope-in-v0.1
-├── Built-in model integrations    — you wrap them (examples/ shows three)
-├── Webcam / RTSP frame sources    — bring your own (FrameSource Protocol)
-├── Batch CLI (videospectra analyze)    — coming in v0.2
-├── Multi-camera / multi-session   — one Session per process
-├── Authentication                 — binds 127.0.0.1 by default
-├── Adaptive sampling              — caller drives the FPS
-├── TypeScript client              — connect to /ws/v1/events directly
-└── UI redesign                    — the bundled dashboard is the legacy demo
-```
+- **Bring your own model.** Wrap any image / video / text encoder behind three small `Embedder` adapters. No model is bundled; the core has no torch dependency.
+- **Spectral signals out of the box.** Von Neumann entropy, motion, anomaly, and shot-boundary detection over a sliding window — pure NumPy, < 5 ms per frame on CPU.
+- **One pipeline, many sinks.** Stream events to stdout, JSONL, WebSocket, an in-memory queue, or a bundled local dashboard — same `Session` object.
+- **Source-agnostic.** Push `Frame` objects in from anywhere: webcam, file, RTSP, simulator, tests.
 
 ## Install
 
@@ -71,30 +42,32 @@ out-of-scope-in-v0.1
 pip install -e .[server,dev]
 ```
 
-`server` extras pull in FastAPI + uvicorn; `dev` extras pull in pytest / ruff / mypy. The core library has no torch dependency.
+`server` extras add FastAPI + uvicorn for the dashboard; `dev` extras add pytest / ruff / mypy. The core library has no torch dependency.
 
-## 30-second hello
+## Try it now
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hdubey-debug/videospectra/blob/main/notebooks/quickstart.ipynb)
+
+The Colab quickstart runs the full pipeline on 50 synthetic frames with a scripted scene change — entropy, motion, anomaly traces plus shot-boundary markers — in under a minute, no GPU, no install.
+
+Locally, after `pip install`:
 
 ```bash
-videospectra demo                 # no GPU, ColorHistogramEmbedder + spectral
-# open http://127.0.0.1:8765, allow webcam, watch entropy/motion/shot light up
+videospectra demo
+# open http://127.0.0.1:8765, allow webcam, watch entropy / motion / shot light up
 ```
 
-## Bring your own model
+## 60-second example
 
 ```python
 import numpy as np
-from PIL import Image
-from videospectra.embedders import ImageEmbedder
-from videospectra.session import Session, ClipConfig
 from videospectra.analytics.spectral import SpectralConfig
+from videospectra.embedders import ImageEmbedder
+from videospectra.session import Session
 from videospectra.sinks import MemorySink
 
 def embed_frames(frames):
-    # frames: list[Frame]  — frames[i].image is a PIL.Image
-    # return shape: (N, embed_dim), any float dtype, finite
-    arr = np.stack([np.asarray(f.image, dtype=np.float32).mean(axis=(0, 1)) for f in frames])
-    return arr  # toy 3-d "embedding"
+    return np.stack([np.asarray(f.image, dtype=np.float32).mean(axis=(0, 1)) for f in frames])
 
 embedder = ImageEmbedder(
     embed_dim=3,
@@ -110,20 +83,36 @@ session = Session(
     source_fps=2.0,
 )
 
-# Push frames in (async):
+# In an async context:
 #   await session.start()
 #   await session.process_frame(Frame.from_pil(img, source_id="cam0", frame_id=i))
 #   ...consume events from `sink`
 ```
 
-Want a clip-level model too? Add `clip_embedder` + `text_embedder` (same `space_id`, same `embed_dim`) and `clip_config=ClipConfig(clip_duration_seconds=4.0, clip_stride_seconds=4.0)`. See `examples/rzenembed_full.py` and `examples/open_clip_frame_pooling.py` for two real configurations.
+For a real clip-level pipeline (frame + video + text embedders + prompt similarity), see `examples/rzenembed_full.py` and `examples/open_clip_frame_pooling.py`.
+
+## Using this with AI coding assistants
+
+Hand this repo to Claude, GPT, Cursor, Copilot, or any agent — it ships with [`AGENTS.md`](AGENTS.md), a compact guide that teaches an AI agent the architecture, recipes, and the 13 invariants it must not violate.
+
+**Prompt template** (paste into any chat-based AI):
+
+> Read AGENTS.md in https://github.com/hdubey-debug/videospectra, then help me [your task — e.g. "wrap my CLIP fork as an ImageEmbedder", "add a Postgres sink", "explain how anomaly detection works"].
+
+**To AI assistants reading this README directly:** read `AGENTS.md` before suggesting code changes. It contains the architecture tree, hard invariants, common pitfalls (Pydantic + Python 3.9 annotation eval, parity gate, per-frame emission order), and the exact commands to run tests, ruff, and mypy.
 
 ## Going deeper
 
-- `docs/architecture-v0.1.md` — full contract: dataflow, BYOM wrappers, Session API, per-frame emission ordering, frame rate, hard invariants
-- `docs/requirements-v0.1.md` — in/out of scope and the 13 hard invariants
-- `docs/modularity.md` — extension points: adding new embedder backends, sinks, sources
-- `examples/` — three working setup files (color histogram, open_clip, rzenembed)
-- `AGENTS.md` — guide for AI coding agents. Point your agent at this file before asking it to operate on the repo.
+- [`docs/architecture-v0.1.md`](docs/architecture-v0.1.md) — full contract: dataflow, BYOM wrappers, Session API, per-frame emission ordering, hard invariants.
+- [`docs/requirements-v0.1.md`](docs/requirements-v0.1.md) — what is and isn't in scope for v0.1, with the 13 invariants enumerated.
+- [`docs/modularity.md`](docs/modularity.md) — extension points: adding new embedder backends, sinks, sources.
+- [`examples/`](examples/) — three working setup files (color histogram, open_clip, rzenembed).
+- [`AGENTS.md`](AGENTS.md) — the AI-agent guide referenced above.
 
-Licensed under Apache 2.0.
+## Status
+
+**Alpha (v0.1).** API is not yet frozen. No PyPI release yet — install from this repo. Webcam / RTSP sources, multi-session, and auth are out of scope for v0.1; see [`docs/requirements-v0.1.md`](docs/requirements-v0.1.md) for the full surface.
+
+## License
+
+[Apache 2.0](LICENSE).

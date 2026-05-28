@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "videospectra"
-version = "0.1.0a3"
+version = "0.1.0a4"
 description = "Spectral video understanding library — von Neumann entropy, motion, anomaly, and shot detection over user-supplied embeddings."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -52,7 +52,7 @@ dev = [
 videospectra = "videospectra.cli:main"
 
 [project.urls]
-Repository = "https://github.com/anthropics/videospectra"
+Repository = "https://github.com/hdubey-debug/videospectra"
 
 [tool.hatch.build.targets.wheel]
 packages = ["videospectra"]
