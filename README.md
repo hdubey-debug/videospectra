@@ -124,6 +124,6 @@ Want a clip-level model too? Add `clip_embedder` + `text_embedder` (same `space_
 - `docs/requirements-v0.1.md` — in/out of scope and the 13 hard invariants
 - `docs/modularity.md` — extension points: adding new embedder backends, sinks, sources
 - `examples/` — three working setup files (color histogram, open_clip, rzenembed)
-- `CLAUDE.md` — guide for AI coding agents (Claude Code, Codex). Point your agent at this file before asking it to operate on the repo.
+- `AGENTS.md` — guide for AI coding agents. Point your agent at this file before asking it to operate on the repo.
 
 Licensed under Apache 2.0.
