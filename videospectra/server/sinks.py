@@ -99,9 +99,12 @@ class LegacyDashboardWebSocketSink:
 
     name: str = "legacy-dashboard-ws"
 
-    def __init__(self, ws: WebSocket, clip_total: int = 8) -> None:
+    def __init__(
+        self, ws: WebSocket, clip_total: int = 8, anomaly_threshold: float = 0.5
+    ) -> None:
         self._ws = ws
         self._clip_total = clip_total
+        self._anomaly_threshold = anomaly_threshold
         # Per-frame partial state keyed on frame_id (small TTL: cleared on flush)
         self._partial: dict[int, dict[str, Any]] = {}
         # Persistent "latest" state
@@ -175,7 +178,7 @@ class LegacyDashboardWebSocketSink:
                 "entropy_norm": event.payload.entropy_norm,
                 "motion_score": event.payload.motion_score,
                 "anomaly_score": event.payload.anomaly_score,
-                "is_anomaly": event.payload.anomaly_score > 0.5,
+                "is_anomaly": event.payload.anomaly_score > self._anomaly_threshold,
                 "is_shot_boundary": partial.get("is_shot_boundary", False),
                 "shot_count": partial.get("shot_count", self._shot_count),
                 "buffer_fill": event.payload.buffer_fill,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 
 import numpy as np
@@ -18,11 +19,13 @@ from videospectra.events import (
     FrameMetrics,
     PromptAdded,
     SessionInfo,
+    ShotBoundary,
 )
 from videospectra.session import (
     ClipConfig,
     EmbedderValidationError,
     Session,
+    _resolve_clip_config,
 )
 from videospectra.sinks import MemorySink
 from videospectra.types import Frame
@@ -457,3 +460,114 @@ class TestAsyncEmbedder:
         await session.process_frame(_make_frame(0))
         assert session.frames_processed == 1
         await session.aclose()
+
+
+def _ab_embedder(switch_at: int, d: int = 64) -> ImageEmbedder:
+    """A frame embedder that returns one fixed unit vector before
+    ``switch_at`` and an orthogonal one at/after it — a deterministic
+    scene change that fires exactly one shot boundary at ``switch_at``,
+    independent of the (ignored) pixel content."""
+    a = np.zeros(d, dtype=np.float64)
+    a[0] = 1.0
+    b = np.zeros(d, dtype=np.float64)
+    b[1] = 1.0
+
+    def embed_fn(frames: list[Frame]) -> np.ndarray:
+        return np.array(
+            [b if f.frame_id >= switch_at else a for f in frames], dtype=np.float64
+        )
+
+    return ImageEmbedder(embed_dim=d, space_id="test/ab@64/order", embed_fn=embed_fn)
+
+
+# ---------------------------------------------------------------------------
+# Per-frame emission ordering — a hard invariant the legacy dashboard sink
+# structurally depends on (FrameMetrics is its per-frame flush signal)
+# ---------------------------------------------------------------------------
+
+
+class TestEmissionOrder:
+    async def test_shot_boundary_precedes_frame_metrics(self) -> None:
+        # For each frame, ShotBoundary must be emitted BEFORE that frame's
+        # FrameMetrics: LegacyDashboardWebSocketSink buffers the shot state
+        # and flushes it only when FrameMetrics for the same frame_id
+        # arrives (server/sinks.py). If the order ever flips, the dashboard
+        # silently drops the cut marker. This pins that ordering.
+        switch_at = 20
+        sink = MemorySink()
+        session = Session(
+            frame_embedder=_ab_embedder(switch_at=switch_at),
+            sinks=[sink],
+            spectral_config=SpectralConfig(window_frames=10),
+        )
+        await session.start()
+        for i in range(40):
+            await session.process_frame(_make_frame(i))
+        await session.aclose()
+        await sink.aclose()
+        events = await _drain(sink)
+
+        shots = [e for e in events if isinstance(e, ShotBoundary)]
+        # Guard against a vacuous pass: the scene change MUST fire a shot,
+        # else the ordering assertions below check nothing.
+        assert shots, "no ShotBoundary fired; the ordering test would be vacuous"
+        for shot in shots:
+            shot_idx = events.index(shot)
+            metrics_idx = None
+            for j, ev in enumerate(events):
+                if isinstance(ev, FrameMetrics) and ev.frame_id == shot.frame_id:
+                    metrics_idx = j
+                    break
+            assert metrics_idx is not None, (
+                f"no FrameMetrics emitted for shot frame {shot.frame_id}"
+            )
+            assert shot_idx < metrics_idx, (
+                f"ShotBoundary for frame {shot.frame_id} emitted AFTER its "
+                "FrameMetrics; the legacy dashboard sink would miss the cut"
+            )
+
+
+# ---------------------------------------------------------------------------
+# ClipConfig seconds -> frames resolution (incl. the rounding-warning branch)
+# ---------------------------------------------------------------------------
+
+
+class TestClipConfigResolution:
+    def test_seconds_resolve_to_frame_counts(self) -> None:
+        # 4.0s clip / 4.0s stride at 2 FPS -> 8 frames each (documented default).
+        resolved = _resolve_clip_config(
+            ClipConfig(clip_duration_seconds=4.0, clip_stride_seconds=4.0),
+            source_fps=2.0,
+        )
+        assert (resolved.clip_frames, resolved.clip_stride) == (8, 8)
+
+    def test_no_warning_when_resolution_is_exact(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING, logger="videospectra.session"):
+            _resolve_clip_config(
+                ClipConfig(clip_duration_seconds=4.0, clip_stride_seconds=4.0),
+                source_fps=2.0,
+            )
+        assert not [r for r in caplog.records if "ClipConfig" in r.getMessage()]
+
+    def test_warns_when_rounding_distorts_request(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # 0.3s * 2 FPS = 0.6 -> rounds to 1 frame (0.5s), ~67% off -> warn.
+        with caplog.at_level(logging.WARNING, logger="videospectra.session"):
+            resolved = _resolve_clip_config(
+                ClipConfig(clip_duration_seconds=0.3, clip_stride_seconds=0.3),
+                source_fps=2.0,
+            )
+        assert resolved.clip_frames == 1
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("clip_duration_seconds" in m for m in messages), messages
+
+    def test_rejects_nonpositive_duration(self) -> None:
+        with pytest.raises(ValueError, match="clip_duration_seconds"):
+            _resolve_clip_config(ClipConfig(clip_duration_seconds=0.0), source_fps=2.0)
+
+    def test_rejects_nonpositive_stride(self) -> None:
+        with pytest.raises(ValueError, match="clip_stride_seconds"):
+            _resolve_clip_config(ClipConfig(clip_stride_seconds=-1.0), source_fps=2.0)

@@ -192,6 +192,11 @@ class Session:
     construct with one or more BYOM embedders, optionally a spectral
     config and a clip config, and a list of sinks. Push frames in with
     ``await process_frame(frame)``; events come out via sinks.
+
+    ``sink_max_queue`` and ``sink_overflow`` apply to *every* sink in the
+    session — there is no per-sink override in v0.1. Pick the policy that
+    fits your strictest sink, or run separate sessions for lossy live
+    output and lossless recording.
     """
 
     def __init__(

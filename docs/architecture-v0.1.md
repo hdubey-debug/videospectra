@@ -115,7 +115,7 @@ Key invariants enforced at construction:
 - If `frame_embedder` is set and `spectral_config` is set, the spectral pipeline activates
 - `source_fps` must be > 0
 
-`process_frame` returns `None`. All events leave via sinks. A slow clip embed never blocks the frame loop — clip work runs in a fire-and-forget task.
+`process_frame` returns `None`; all events leave via sinks. Clip embedding runs in a fire-and-forget task, so it never blocks spectral analytics or event emission. It does share the embedder semaphore, though: at the default `embedder_concurrency=1` a slow clip embed delays the *next frame's embedding* (this serialization is intentional — it protects single-threaded model backends from concurrent calls; see [Embedder concurrency](#embedder-concurrency)). Set `embedder_concurrency` ≥ 2 to overlap clip and frame embeds.
 
 ### Frame rate
 
@@ -158,6 +158,8 @@ class Sink(Protocol):
 ```
 
 `SinkRunner` (internal): one worker task per sink, bounded `asyncio.Queue`, overflow policy `drop_oldest | drop_newest | block`. A sink that raises `failure_threshold` times in a row is disabled and logged. The Session never blocks on `emit` directly — only on `enqueue`, which is non-blocking under drop policies.
+
+**Overflow is session-global in v0.1.** `sink_max_queue` and `sink_overflow` apply uniformly to every sink (hard-invariant #3) — there is no per-sink override. A single Session therefore can't pair a lossy live sink (`drop_oldest`, right for a dashboard) with a lossless recorder (`block`, right for a `JsonlSink` that must not drop events): pick the policy that fits your strictest sink, or run separate Sessions for the live and recording paths. Per-sink overflow configuration is deferred to v0.2.
 
 Built-in sinks:
 

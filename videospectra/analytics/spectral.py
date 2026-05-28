@@ -293,7 +293,11 @@ class SpectralAnalyzer:
             entropy_norm=float(result["entropy_norm"]),
             motion_score=float(result["motion_score"]),
             anomaly_score=cur_anom,
-            is_anomaly=bool(result["is_anomaly"]),
+            # Honor the configured threshold (the documented contract),
+            # consistent with is_shot_boundary above and the Session's
+            # AnomalyAlert tracker. The verbatim port's result["is_anomaly"]
+            # is hardcoded to >0.5 and kept only for the parity fixture.
+            is_anomaly=cur_anom > cfg.anomaly_threshold,
             is_shot_boundary=is_shot,
             shot_count=st.shot_count,
             buffer_fill=int(result["buffer_fill"]),

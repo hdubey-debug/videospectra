@@ -6,10 +6,13 @@ import json
 
 from fastapi.testclient import TestClient
 from PIL import Image
+from starlette.websockets import WebSocketState
 
 from videospectra.analytics.spectral import SpectralConfig
 from videospectra.embedders import ColorHistogramEmbedder, DummyEmbedder
+from videospectra.events import FrameMetrics, FrameMetricsPayload
 from videospectra.server import create_app
+from videospectra.server.sinks import LegacyDashboardWebSocketSink
 from videospectra.session import Session
 
 
@@ -159,3 +162,49 @@ class TestPromptCommand:
                         assert msg["text"] == "a dog"
                         break
                 assert found
+
+
+class _RecordingWS:
+    """Minimal WebSocket stand-in for unit-testing a sink: reports itself
+    connected and records every payload passed to ``send_json``."""
+
+    def __init__(self) -> None:
+        self.application_state = WebSocketState.CONNECTED
+        self.sent: list[dict] = []
+
+    async def send_json(self, payload: dict) -> None:
+        self.sent.append(payload)
+
+
+class TestLegacyDashboardSink:
+    """The bundled dashboard sink must threshold ``is_anomaly`` against the
+    session's configured ``anomaly_threshold``, not a hardcoded constant."""
+
+    @staticmethod
+    def _frame_metrics(anomaly_score: float) -> FrameMetrics:
+        return FrameMetrics(
+            session_id="t",
+            monotonic_ts=0.0,
+            frame_id=1,
+            payload=FrameMetricsPayload(
+                entropy_norm=0.5,
+                motion_score=0.1,
+                anomaly_score=anomaly_score,
+                buffer_fill=10,
+                infer_ms=1.0,
+            ),
+        )
+
+    async def test_is_anomaly_honors_configured_threshold(self) -> None:
+        # anomaly_score=0.6 straddles the default 0.5 and a configured 0.7,
+        # so the flat is_anomaly flag must flip with the threshold. On the
+        # old hardcoded-0.5 sink the 0.7 case would wrongly report True.
+        ws_high = _RecordingWS()
+        await LegacyDashboardWebSocketSink(ws_high, anomaly_threshold=0.7).emit(
+            self._frame_metrics(0.6)
+        )
+        assert ws_high.sent[-1]["is_anomaly"] is False
+
+        ws_default = _RecordingWS()
+        await LegacyDashboardWebSocketSink(ws_default).emit(self._frame_metrics(0.6))
+        assert ws_default.sent[-1]["is_anomaly"] is True

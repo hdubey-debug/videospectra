@@ -46,6 +46,11 @@ def register_websocket_routes(
                     if session._resolved_clip is not None
                     else 8
                 ),
+                anomaly_threshold=(
+                    session.spectral_config.anomaly_threshold
+                    if session.spectral_config is not None
+                    else 0.5
+                ),
             ),
         )
 

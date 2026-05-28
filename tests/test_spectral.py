@@ -211,6 +211,38 @@ class TestProperties:
         assert shot_count <= 3, f"shot boundary fired too often: {shot_count}"
         assert shot_count >= 1
 
+    def test_is_anomaly_honors_configured_threshold(self) -> None:
+        # SpectralUpdate.is_anomaly must track the *configured*
+        # anomaly_threshold (its documented contract), not a hardcoded
+        # constant. Feed one identical embedding stream to two analyzers
+        # whose thresholds bracket the data; the is_anomaly sequences MUST
+        # diverge. On the old code — which derived is_anomaly from the
+        # verbatim port's hardcoded ``anomaly_score > 0.5`` — both
+        # sequences are identical regardless of config, so this guards
+        # the fix and is consistent with how is_shot_boundary and
+        # AnomalyAlert already honor the threshold.
+        first = _random_embeddings(n=35, d=64, seed=1)
+        jumped = l2_normalize(_random_embeddings(n=25, d=64, seed=2) + 3.0)
+        embeddings = np.vstack([first, jumped])
+
+        lo, hi = 0.3, 0.7
+        a_lo = SpectralAnalyzer(SpectralConfig(anomaly_threshold=lo))
+        a_hi = SpectralAnalyzer(SpectralConfig(anomaly_threshold=hi))
+        res_lo = [a_lo.update(e) for e in embeddings]
+        seq_hi = [a_hi.update(e).is_anomaly for e in embeddings]
+        seq_lo = [u.is_anomaly for u in res_lo]
+
+        # Not vacuous: at least one score must land in (lo, hi] so the two
+        # thresholds actually disagree somewhere on this input.
+        assert any(lo < u.anomaly_score <= hi for u in res_lo), (
+            "test data never lands between the thresholds; widen the bracket"
+        )
+        # The configured threshold changes the verdict.
+        assert seq_lo != seq_hi
+        # Exact per-frame contract: is_anomaly == (anomaly_score > threshold).
+        for u in res_lo:
+            assert u.is_anomaly == (u.anomaly_score > lo)
+
 # ---------------------------------------------------------------------------
 # Memory & isolation
 # ---------------------------------------------------------------------------
